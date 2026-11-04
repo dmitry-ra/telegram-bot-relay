@@ -19,7 +19,9 @@ second runtime. Run `uv run --locked python tools/check.py` before code commits.
 
 ## Rules
 
-- All published files use English and ASCII, including fixtures and commits.
+- All published text files use English and ASCII, including fixtures and commits.
+- Owned binary documentation images must satisfy the narrow asset checks in
+  tools/check.py and the documented demo review; other files remain text-checked.
 - Work on a feature branch. Open or merge PRs only with explicit owner authorization.
 - Do not publish releases without explicit owner authorization.
 - Keep KISS, DRY, SOLID and YAGNI. One bot per daemon; no storage framework.

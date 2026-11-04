@@ -27,7 +27,7 @@ Set `TELEGRAM_RELAY_API_TOKEN` securely in the launch environment and
 example sends a message without putting a credential in the command line:
 
 ```sh
-python - <<'PY'
+python3 - <<'PY'
 import json
 import os
 from urllib.request import Request, urlopen
