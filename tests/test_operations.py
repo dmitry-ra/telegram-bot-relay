@@ -149,3 +149,32 @@ def test_callback_authorizes_nested_group_context(
         journal.close()
 
     asyncio.run(run())
+
+
+@pytest.mark.parametrize("kind", ["public", "symlink"])
+def test_upload_rejects_unsafe_archive_directory(tmp_path: Path, kind: str) -> None:
+    async def run() -> None:
+        config = configuration(tmp_path)
+        source = tmp_path / "upload"
+        source.write_bytes(b"private upload")
+        config.attachments.upload_roots = [str(tmp_path)]
+        journal = Journal(Path(config.data_dir))
+        directory = journal.root / journal.period / "attachments"
+        outside = tmp_path / "outside"
+        outside.mkdir(mode=0o700)
+        if kind == "public":
+            directory.mkdir()
+            directory.chmod(0o755)
+        else:
+            directory.symlink_to(outside, target_is_directory=True)
+        client = FakeClient()
+        result = await Operations(config, journal, client).execute(
+            SendMedia(chat_id=101, media=[Media(kind="document", path=str(source))]), "http"
+        )
+        assert result.status == "failed"
+        assert not client.sent
+        assert not list(outside.iterdir())
+        assert not list(directory.iterdir())
+        journal.close()
+
+    asyncio.run(run())

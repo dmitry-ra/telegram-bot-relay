@@ -12,7 +12,7 @@ from pydantic import JsonValue
 from telegram_bot_relay.application.access import authorize
 from telegram_bot_relay.application.models import Callback, Operation, Outcome, SendMedia, Transfer
 from telegram_bot_relay.config import Config
-from telegram_bot_relay.journal.writer import Journal, sync_directory
+from telegram_bot_relay.journal.writer import Journal, private_directory, sync_directory
 from telegram_bot_relay.telegram.client import Client
 
 
@@ -148,6 +148,7 @@ class Operations:
                 raise ValueError("Upload path outside allowed roots")
             directory = self.journal.root / period / "attachments"
             directory.mkdir(exist_ok=True, mode=0o700)
+            private_directory(directory)
             snapshot = directory / f"out-{operation_id}-{index}"
             snapshot.mkdir(mode=0o700)
             destination = snapshot / source.name

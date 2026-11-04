@@ -31,6 +31,12 @@ def private_path(path: Path) -> None:
         raise ValueError("Archive paths must not grant group or other permissions")
 
 
+def private_directory(path: Path) -> None:
+    if path.is_symlink():
+        raise ValueError("Symlink directory is not supported")
+    private_path(path)
+
+
 def backup_tail(path: Path, offset: int, tail: bytes) -> None:
     backup = path.with_name(f"incomplete-tail-{offset}-{sha256(tail).hexdigest()}.bin")
     temporary = backup.with_suffix(".tmp")

@@ -150,7 +150,7 @@ def test_attachments_reject_unsafe_existing_directory(tmp_path: Path, kind: str)
             outside.mkdir(mode=0o700)
             directory.symlink_to(outside, target_is_directory=True)
         client = FakeClient()
-        with pytest.raises(ValueError, match="Attachment directory"):
+        with pytest.raises(ValueError, match="permissions|Symlink directory"):
             await prepare(client, {"document": {"file_id": "one"}}, directory, Attachments(), True)
         assert not client.downloaded
 
