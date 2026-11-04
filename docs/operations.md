@@ -96,3 +96,9 @@ separate operations and album items cannot overwrite one another.
 Gateway URLs must be HTTP(S) base URLs without userinfo, query or fragment
 (including empty delimiters). Use gateway.token_file for authentication. Invalid
 URLs are rejected during configuration loading before journal or network use.
+
+Archive and evidence roots must have a stable namespace controlled by the owner
+account or administrator, including their parent directories. Permission checks
+do not isolate against actors able to replace these roots or modify the process
+and its files. Derived archive directories reject symlinks and persist their
+parent directory entries before results can refer to newly created files.

@@ -32,9 +32,11 @@ def private_path(path: Path) -> None:
 
 
 def private_directory(path: Path) -> None:
+    """Validate a derived directory and persist its parent's directory entry."""
     if path.is_symlink():
         raise ValueError("Symlink directory is not supported")
     private_path(path)
+    sync_directory(path.parent)
 
 
 def backup_tail(path: Path, offset: int, tail: bytes) -> None:
