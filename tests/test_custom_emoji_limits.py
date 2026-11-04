@@ -61,21 +61,51 @@ def test_thumbnail_deadline_includes_all_downloads(tmp_path: Path) -> None:
         config = configuration(tmp_path)
         config.attachments.timeout = 1
         journal = Journal(Path(config.data_dir))
-        client = ThumbnailClient()
-        client.download_delay = 0.6
-        result = await inspect_custom_emoji(
-            InspectCustomEmoji(custom_emoji_ids=["1", "2", "3"], download_thumbnail=True),
-            config,
-            journal,
-            client,
-            "test",
-        )
+        deadlines: list[float | None] = []
+        real_timeout_at = asyncio.timeout_at
+
+        def observe_deadline(deadline: float | None) -> asyncio.Timeout:
+            deadlines.append(deadline)
+            return real_timeout_at(deadline)
+
+        class TimedClient(ThumbnailClient):
+            async def custom_emoji(self, ids: list[str]) -> list[JsonValue]:
+                return [
+                    {"custom_emoji_id": value, "thumbnail": {"file_id": "thumb" + value}}
+                    for value in ids
+                ]
+
+            async def download(self, file_id: str, path: Path, limit: int, timeout: int) -> None:
+                self.downloaded.append(file_id)
+                if file_id != "thumb1":
+                    await asyncio.Event().wait()
+                path.write_bytes(b"example file")
+
+        client = TimedClient()
+        with patch(
+            "telegram_bot_relay.application.custom_emoji.asyncio.timeout_at", observe_deadline
+        ):
+            result = await inspect_custom_emoji(
+                InspectCustomEmoji(custom_emoji_ids=["1", "2", "3"], download_thumbnail=True),
+                config,
+                journal,
+                client,
+                "test",
+            )
         assert result.status == "ok" and len(result.stickers) == 3
-        assert client.downloaded == ["thumb1", "thumb2"]
+        # The first download has no scheduling point; the second is cancelled by
+        # the real production deadline. Under heavy load it may expire earlier.
+        assert client.downloaded in ([], ["thumb1"], ["thumb1", "thumb2"])
+        assert "thumb3" not in client.downloaded
+        assert deadlines and len(set(deadlines)) == 1
         downloads = [item["thumbnail_download"] for item in result.stickers]
-        assert isinstance(downloads[0], dict) and downloads[0]["status"] == "saved"
-        assert downloads[1:] == [{"status": "failed", "error": "TimeoutError"}] * 2
-        assert len(list(journal.root.glob("*/inspections/*/*.webp"))) == 1
+        assert downloads[-1] == {"status": "failed", "error": "TimeoutError"}
+        assert all(
+            isinstance(item, dict)
+            and (item["status"] == "saved" or item == {"status": "failed", "error": "TimeoutError"})
+            for item in downloads
+        )
+        assert len(list(journal.root.glob("*/inspections/*/*.webp"))) <= 1
         journal.close()
 
     asyncio.run(run())

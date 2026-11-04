@@ -1,4 +1,4 @@
-"""Read-only custom emoji inspection through the existing Telegram client."""
+"""Audited custom emoji inspection with optional thumbnail archiving."""
 
 import asyncio
 from typing import Annotated, Literal
