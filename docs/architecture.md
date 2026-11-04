@@ -4,6 +4,8 @@ One process owns one bot and one append-only archive. REST and Streamable HTTP
 MCP run in the same Starlette application with shared operations. No stdio
 proxy, SQL database or dependency on Message Gateway is required.
 
+## Input and access
+
 aiogram supplies Bot API methods, transport, files and errors. RawUpdates uses
 the SDK method mechanism but returns original JSON objects rather than typed
 Update models: future fields and unknown event types survive archival.
@@ -16,11 +18,15 @@ allowlists deny all. Groups require explicit enablement and an allowed chat.
 Denied messages are archived in full; downstream forwarding is prohibited.
 Optional denied-file downloads archive bytes only, without interpretation.
 
+## Optional Gateway delivery
+
 Independent workers prepare attachments and forward prepared records to
 Gateway. Gateway outages do not stop input archival. Its start position is
 explicitly oldest or latest and persisted as gateway_started. gateway_accepted
 means HTTP queue acceptance, not model reading or completion. Denied input
 is never forwarded. Gateway's own queue remains in memory.
+
+## Operations and files
 
 REST/MCP requests are typed and share destination validation. Local outgoing
 files must resolve inside configured upload roots, are copied into the archive
@@ -40,6 +46,8 @@ On restart, unfinished operations are marked uncertain instead of resent.
 Rejected schemas/authentication and protocol initialization are technical
 traffic, not accepted application operations, and do not enter this journal.
 
+## Rotation and recovery
+
 Cron rotation uses the configured timezone and creates directories only when
 events occur. Each closed events.jsonl ends with a relative next_events link;
 the next segment starts with a reverse link. A new directory is created before
@@ -57,11 +65,23 @@ arbitrary JSON. See the packaged JSON Schema. Readers filter record types and
 follow continuation links; they own their offsets. Startup scans committed
 records; no checkpoint database or automatic retention is implemented.
 
+## Gateway delivery and limits
+
 Delivery cannot promise exactly once across independent systems. A crash after
 Gateway accepts but before its local receipt may duplicate forwarding. A Gateway
 restart loses its in-memory queue. Archived records support investigation and
 explicit replay, not proof of model completion. Telegram Bot API permissions,
 privacy and update retention apply regardless of SDK feature coverage.
+
+Custom reaction metadata is optional display/context enrichment; the original
+update remains intact. If inline metadata exceeds Gateway's 65536-byte content
+limit, forwarding uses a reference to the existing prepared journal record.
+If that reference cannot fit, optional metadata stays in the journal while the
+original content is forwarded. Original content that already exceeds the limit
+is not truncated. Receivers need access to referenced archive paths. This adds
+no cache service or separate message store.
+
+## Startup ownership
 
 The daemon and live trial validate the Telegram identity, archive identity and
 local bot lock before constructing or starting the HTTP server. Initialization

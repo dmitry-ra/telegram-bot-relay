@@ -1,47 +1,51 @@
-# telegram-bot-relay
+# Telegram Bot Relay
 
-A standalone Telegram bot relay with rotating JSONL archives, HTTP and MCP
-messaging, and optional Message Gateway delivery.
+Connect a Telegram bot to your scripts and MCP clients. Relay saves incoming
+updates and attachments in a local archive and provides HTTP and MCP operations
+for sending messages, replies, files and reactions.
 
-One daemon owns one bot. All incoming updates are archived with an access
-decision, including denied messages. Attachments rotate with their message
-period. REST and Streamable HTTP MCP share outgoing operations and archive
-their requests/results. The bot keeps collecting when Gateway is disabled
-or unavailable.
+Use it to keep a record of bot activity, send notifications from existing tools,
+or give an interactive session a Telegram connection. One process owns one bot;
+multiple clients share its operations and access policy.
 
-Gateway previews identify reaction changes, for example `Reaction #42 | Set`
-followed by the added emoji, or `Clear` followed by removed emoji. Original
-reaction updates remain intact in the archive and forwarded content.
-Custom reactions use their associated emoji and sticker set name when available,
-such as `Set <emoji> (custom, ExamplePack)`. Missing metadata falls back to the
-custom ID. Lookup is separate from formatting, bounded to three seconds, and
-saved with the prepared event for forwarding retries and recovery. Full lookup
-metadata is forwarded as `reaction_metadata`; original updates remain unchanged.
-No automatic thumbnail download, cache service or new message store is needed.
-If inline metadata would exceed Gateway's 65536-byte content limit, forwarding
-uses a reference to the existing prepared journal record. If the reference also
-cannot fit, optional metadata stays in the journal while the original content
-is forwarded. Original content that already exceeds the limit is not truncated.
+```mermaid
+flowchart LR
+    T[Telegram] <--> R[Telegram Bot Relay]
+    R --> A[Local archive]
+    C[Scripts / MCP clients] -->|send and reply| R
+    R -. optional .-> G[Message Gateway]
+```
 
-Built with Python>=3.12, aiogram3.31.0 and the MCP SDK. No database server,
-separate MCP proxy, automatic transcription or model provider is required.
+![Standalone Relay archives a synthetic message and sends an MCP reply](docs/assets/relay-demo.gif)
+
+*Actual Relay and MCP, with explicitly synthetic Telegram transport.*
+[Static view and reproduction](docs/demo.md).
+
+## Start here
+
+Install [uv](https://docs.astral.sh/uv/) and use Python 3.12 or later. From this
+source checkout, prepare a private configuration using
+[the example](examples/config.toml) and the [run guide](docs/operations.md#configure).
+Set your bot/API token files and allowed numeric user/chat IDs before starting:
 
 ```sh
 uv sync --locked
 uv run --locked telegram-bot-relay --config /absolute/private-config.toml
 ```
 
-Configure examples/config.toml first. Provide private bot/API token files and
-numeric user/outgoing-chat allowlists. Default private policy denies everyone.
-See [operations](docs/operations.md), [API](docs/api.md) and
-[architecture](docs/architecture.md). The packaged Telegram skill explains
-incoming full context and correct reply/attachment handling.
+Relay works independently: scripts can consume its archive and send through
+HTTP or MCP. For incoming delivery to an existing Codex conversation, pair it
+with [Message Gateway](https://github.com/dmitry-ra/message-gateway) using the
+[complete Telegram + Gateway cookbook](docs/codex.md). Replies go through Relay.
 
-For a complete bidirectional setup with your own bot and an interactive Codex
-conversation, follow [Connect a bot to Codex](docs/codex.md). It uses ordinary
-configuration files and the public projects, without a host-specific helper.
+## Guides
 
-Run uv run --locked python tools/check.py before code commits. CI checks
-Python3.12/3.13/3.14, formatting, lint, strict types, schemas and branch coverage.
-Real bot tests are opt-in. This project is under initial development; no PyPI
-release is published by repository setup.
+| I want to... | Read |
+| --- | --- |
+| Configure, run or troubleshoot a bot | [Operations](docs/operations.md) |
+| Send messages from a program or MCP client | [HTTP and MCP](docs/api.md) |
+| Understand archives and delivery guarantees | [Architecture](docs/architecture.md) |
+| Change the project or run checks | [Testing](docs/testing.md) |
+| Operate the repository with an agent | [Usage skill](.agents/skills/operate-telegram-relay/SKILL.md) |
+
+[MIT license](LICENSE).

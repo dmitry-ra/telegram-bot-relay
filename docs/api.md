@@ -1,9 +1,13 @@
 # HTTP and MCP
 
+## Authentication
+
 Both interfaces require the bearer secret from api_token_file and bind to
 loopback. Validate Host and Origin; do not expose directly to the internet.
 Maximum request body is 1 MiB. All outgoing destinations are checked against
 outgoing_chats, independently of inbound sender permissions.
+
+## HTTP operations
 
 POST /v1/operations accepts one discriminated operation object. Unknown fields,
 wrong types, ambiguous file sources and invalid albums are rejected. GET
@@ -18,6 +22,8 @@ HTTP 200 carries an operation outcome: sent, denied, failed or uncertain. Inspec
 status, result and error; do not equate HTTP 200 with Telegram delivery.
 HTTP 400 is schema failure, 401 authentication, 403 origin/host, 413 body limit.
 
+## MCP tools
+
 Connect an MCP client to http://127.0.0.1:10881/mcp with the same Authorization
 header. No subprocess or separate poller is launched. Tools accept a typed
 request object and return the same Outcome model:
@@ -31,6 +37,8 @@ request object and return the same Outcome model:
 | edit_message | Edit text and formatting |
 | set_reaction | Set one emoji reaction |
 | answer_callback | Answer a button callback |
+
+## Custom emoji inspection
 
 Audited custom emoji inspection is available through MCP `inspect_custom_emoji`
 and POST `/v1/custom-emoji`, sharing the same implementation and authentication:
@@ -52,6 +60,8 @@ or the configured attachment timeout, whichever is shorter. All thumbnails in
 one request share the configured attachment byte and time limits; later files
 report failure once either budget is exhausted. These are request limits, not
 per-file allowances multiplied by the number of IDs.
+
+## Files and update coverage
 
 Files use exactly one local path or Telegram file_id. Albums contain 2-10
 photos/videos, only documents, or only audio. Document mode preserves bytes;

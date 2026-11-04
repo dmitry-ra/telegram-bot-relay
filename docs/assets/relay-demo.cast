@@ -1,0 +1,8 @@
+{"version": 2, "width": 86, "height": 27, "env": {"TERM": "xterm-256color"}, "title": "Relay standalone demo"}
+[0, "o", "\u001b[2J\u001b[H\u001b[1;36mTELEGRAM BOT RELAY | standalone demo\u001b[0m\r\nSynthetic Telegram transport / actual Relay and MCP\r\n\r\n"]
+[2.001406, "o", "\u001b[1;33mTELEGRAM (synthetic input)\u001b[0m\r\nCasey: Send the release checklist.\r\n"]
+[5.031606, "o", "\r\n\u001b[1;32mRELAY (actual local archive)\u001b[0m\r\nupdate 1 committed | allowed=True\r\nOriginal content retained; Gateway is optional.\r\n"]
+[8.0824, "o", "\r\n\u001b[1;35mCLIENT (actual MCP request)\u001b[0m\r\nreply(chat_id=42, reply_to=41)\r\ntext=\"Build. Test. Deploy.\"\r\n"]
+[11.229735, "o", "\r\n\u001b[1;33mTELEGRAM (synthetic Bot API outbox)\u001b[0m\r\nRelay: Build. Test. Deploy.\r\nsent | message_id=101 | reply_to=41\r\n"]
+[14.381546, "o", "\r\n\u001b[1;32mArchive: inbound + requested + completed records\u001b[0m\r\nNo real bot, model or private configuration used.\r\n"]
+[19.415768, "x", "0"]

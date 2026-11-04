@@ -1,9 +1,29 @@
-# Connect a bot to an interactive Codex conversation
+# Cookbook: Telegram, Message Gateway and Codex
 
 This recipe connects a bot you own to a conversation you also use in the
 terminal. Relay receives Telegram updates, archives them and optionally passes
 them to Message Gateway. Gateway queues and batches input for Codex. Codex
 sends replies or proactive messages through Relay's MCP tools.
+
+```mermaid
+flowchart LR
+    T[Telegram user] --> R[Telegram Bot Relay]
+    R --> A[Local archive]
+    R --> G[Message Gateway]
+    G --> C[Codex conversation]
+    C -->|Relay MCP reply| R
+    R --> T
+```
+
+Incoming messages pass through Gateway; replies call Relay directly. Relay can
+also run independently for archival and HTTP/MCP sending. Gateway can receive
+other producers without Telegram. See Gateway's
+[getting started](https://github.com/dmitry-ra/message-gateway/blob/main/docs/getting-started.md),
+[reference](https://github.com/dmitry-ra/message-gateway/blob/main/docs/reference.md)
+and [development](https://github.com/dmitry-ra/message-gateway/blob/main/docs/development.md)
+guides for its standalone use. This page owns the joint recipe, rather than
+copying those guides. The [standalone demo](demo.md) illustrates Relay's local
+archive and MCP path with synthetic Telegram transport.
 
 No custom Python integration, hooks, tmux automation or host-specific setup
 script is required. Use the repository's existing commands and configuration.
@@ -146,7 +166,7 @@ needs an explicit target update and Gateway restart; automatic binding is not
 implemented. A loaded conversation can outlive its terminal. Gateway's accepted
 queue is memory-only: a restart can lose accepted but undelivered messages even
 though Relay's source archive remains. Native idle checks cannot atomically
-exclude concurrent keyboard submissions. See Gateway's README for limits.
+exclude concurrent keyboard submissions. See Gateway's [reference](https://github.com/dmitry-ra/message-gateway/blob/main/docs/reference.md) for limits.
 
 Stop Relay before handing the bot back to another consumer. Preserve archives
 unless their deletion was explicitly intended. For troubleshooting inspect
