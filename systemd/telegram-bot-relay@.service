@@ -1,0 +1,16 @@
+[Unit]
+Description=Telegram Bot Relay (%i)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=%h/.local/bin/telegram-bot-relay --config %h/.config/telegram-bot-relay/%i.toml
+Restart=on-failure
+RestartSec=5
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=default.target
