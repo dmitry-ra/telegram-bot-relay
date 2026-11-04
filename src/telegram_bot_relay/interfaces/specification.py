@@ -33,7 +33,7 @@ def openapi() -> dict[str, Any]:
                     },
                     "responses": {
                         "200": {
-                            "description": "Read-only inspection; inspect status and missing IDs",
+                            "description": "Audited custom emoji inspection; inspect status and missing IDs",
                             "content": {
                                 "application/json": {
                                     "schema": {"$ref": "#/components/schemas/Inspection"}

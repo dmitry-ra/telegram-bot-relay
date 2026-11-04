@@ -110,7 +110,7 @@ def test_enrichment_uses_durable_reference_without_truncating_original(
             elif mode == "no_room":
                 assert "reaction_metadata" not in content
             else:
-                assert content["reaction_metadata"] == metadata
+                assert "reaction_metadata" not in content
             journal.close()
 
     asyncio.run(run())

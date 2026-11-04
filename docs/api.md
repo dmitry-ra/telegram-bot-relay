@@ -32,7 +32,7 @@ request object and return the same Outcome model:
 | set_reaction | Set one emoji reaction |
 | answer_callback | Answer a button callback |
 
-Read-only custom emoji inspection is available through MCP `inspect_custom_emoji`
+Audited custom emoji inspection is available through MCP `inspect_custom_emoji`
 and POST `/v1/custom-emoji`, sharing the same implementation and authentication:
 
 ```json

@@ -254,10 +254,9 @@ class Service:
         if not metadata:
             return content
         enriched: dict[str, JsonValue] = {**content, "reaction_metadata": metadata}
-        if (
-            content_size(content) > GATEWAY_CONTENT_BYTES
-            or content_size(enriched) <= GATEWAY_CONTENT_BYTES
-        ):
+        if content_size(content) > GATEWAY_CONTENT_BYTES:
+            return content
+        if content_size(enriched) <= GATEWAY_CONTENT_BYTES:
             return enriched
         reference: dict[str, JsonValue] = {
             **content,
