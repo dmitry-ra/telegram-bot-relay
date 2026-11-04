@@ -18,9 +18,12 @@ from telegram_bot_relay.telegram.client import Client
 
 async def serve(config: Config) -> None:
     journal = Journal(Path(config.data_dir).expanduser(), config.rotate, config.timezone)
-    client = Client(secret(config.token_file))
+    client: Client | None = None
+    service: Service | None = None
     try:
+        client = Client(secret(config.token_file))
         service = Service(config, journal, client)
+        await service.initialize()
         server = uvicorn.Server(
             uvicorn.Config(
                 create_app(service.operations, secret(config.api_token_file)),
@@ -44,7 +47,10 @@ async def serve(config: Config) -> None:
                 tasks[1].cancel()
             await asyncio.gather(*tasks, return_exceptions=True)
     finally:
-        await client.close()
+        if service is not None:
+            service.close()
+        if client is not None:
+            await client.close()
         journal.close()
 
 

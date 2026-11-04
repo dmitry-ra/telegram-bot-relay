@@ -28,7 +28,9 @@ before sending, and have explicit media kind. Initial symlinks are resolved; the
 canonical file must remain under a configured root. Descriptor-based copying
 rejects symlink replacements in any canonical path component and enforces the
 regular-file type and byte limit on the opened file. Incoming downloads have bounded
-time and bytes, generated names and durable completion records. A file archive
+time and bytes, generated names and durable completion records. Existing download
+directories must be private and must not be symlinks; destination files are
+created exclusively with 0600 permissions. A file archive
 does not establish that its contents are safe or understood.
 
 Outbound requested/completed records share operation_id. Successful results
@@ -60,3 +62,7 @@ Gateway accepts but before its local receipt may duplicate forwarding. A Gateway
 restart loses its in-memory queue. Archived records support investigation and
 explicit replay, not proof of model completion. Telegram Bot API permissions,
 privacy and update retention apply regardless of SDK feature coverage.
+
+The daemon and live trial validate the Telegram identity, archive identity and
+local bot lock before constructing or starting the HTTP server. Initialization
+is idempotent; direct worker startup uses the same validation and lock lifetime.

@@ -146,7 +146,8 @@ class Client:
             raise ValueError("Attachment path unavailable")
         import os
 
-        with path.open("wb", buffering=0) as raw:
+        descriptor = os.open(path, os.O_CREAT | os.O_EXCL | os.O_WRONLY | os.O_NOFOLLOW, 0o600)
+        with os.fdopen(descriptor, "wb", buffering=0) as raw:
             with LimitedWriter(raw, limit) as output:
                 await self.bot.download_file(file.file_path, output, timeout=timeout)
                 output.flush()

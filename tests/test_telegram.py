@@ -94,6 +94,17 @@ def test_sdk_against_mock_api(tmp_path: Path) -> None:
                     await client.execute(SendMedia(chat_id=101, media=[media]))
                 await client.download("one", tmp_path / "file", 10, 5)
                 assert (tmp_path / "file").read_bytes() == b"hello"
+                assert (tmp_path / "file").stat().st_mode & 0o077 == 0
+                protected = tmp_path / "protected"
+                protected.write_bytes(b"retained")
+                link = tmp_path / "link"
+                link.symlink_to(protected)
+                with pytest.raises(FileExistsError):
+                    await client.download("one", link, 10, 5)
+                assert protected.read_bytes() == b"retained"
+                with pytest.raises(FileExistsError):
+                    await client.download("one", protected, 10, 5)
+                assert protected.read_bytes() == b"retained"
                 with pytest.raises(ValueError):
                     await client.download("one", tmp_path / "oversize", 4, 5)
             finally:
@@ -123,5 +134,24 @@ def test_attachment_limits_and_failures(tmp_path: Path) -> None:
         result = await prepare(client, original, tmp_path / "attachments", settings, True)
         assert result[0]["status"] == "failed"
         assert not list((tmp_path / "attachments").glob("*.part"))
+
+    asyncio.run(run())
+
+
+@pytest.mark.parametrize("kind", ["public", "symlink"])
+def test_attachments_reject_unsafe_existing_directory(tmp_path: Path, kind: str) -> None:
+    async def run() -> None:
+        directory = tmp_path / "attachments"
+        if kind == "public":
+            directory.mkdir()
+            directory.chmod(0o755)
+        else:
+            outside = tmp_path / "outside"
+            outside.mkdir(mode=0o700)
+            directory.symlink_to(outside, target_is_directory=True)
+        client = FakeClient()
+        with pytest.raises(ValueError, match="Attachment directory"):
+            await prepare(client, {"document": {"file_id": "one"}}, directory, Attachments(), True)
+        assert not client.downloaded
 
     asyncio.run(run())

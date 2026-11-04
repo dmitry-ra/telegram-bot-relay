@@ -51,6 +51,8 @@ async def prepare(
                 result.append(entry)
                 continue
             directory.mkdir(exist_ok=True, mode=0o700)
+            if directory.is_symlink() or directory.stat().st_mode & 0o077:
+                raise ValueError("Attachment directory must be private and not a symlink")
             suffix = Path(str(item.get("file_name", "file.bin"))).suffix
             suffix = suffix if re.fullmatch(r"\.[A-Za-z0-9]{1,10}", suffix) else ".bin"
             path = directory / (uuid4().hex + suffix)

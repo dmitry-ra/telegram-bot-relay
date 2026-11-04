@@ -79,3 +79,15 @@ def test_upload_preserves_existing_destination(tmp_path: Path) -> None:
     with pytest.raises(FileExistsError):
         copy_upload(source, tmp_path, destination, 100)
     assert destination.read_bytes() == b"retained"
+
+
+def test_upload_snapshot_uses_private_file_permissions(tmp_path: Path) -> None:
+    source = tmp_path / "source"
+    source.write_bytes(b"upload")
+    destination = tmp_path / "snapshot"
+    previous = os.umask(0o022)
+    try:
+        copy_upload(source, tmp_path, destination, 100)
+    finally:
+        os.umask(previous)
+    assert destination.stat().st_mode & 0o077 == 0

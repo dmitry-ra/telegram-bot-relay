@@ -104,6 +104,7 @@ def test_cli_lifecycle_closes_resources(tmp_path: Path) -> None:
     Path(config.api_token_file).write_text("api-secret")
     client = FakeClient()
     with (
+        patch.object(Path, "home", return_value=tmp_path),
         patch.object(cli, "Client", return_value=client),
         patch.object(Service, "run", new=AsyncMock()),
         patch.object(uvicorn.Server, "serve", new=AsyncMock()),
@@ -145,6 +146,7 @@ def test_actual_http_daemon_shutdown(tmp_path: Path) -> None:
             await asyncio.Event().wait()
 
         with (
+            patch.object(Path, "home", return_value=tmp_path),
             patch.object(cli, "Client", return_value=FakeClient()),
             patch.object(Service, "run", side_effect=pending),
             patch.object(uvicorn, "Server", side_effect=server_factory),

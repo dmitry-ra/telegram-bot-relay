@@ -36,8 +36,11 @@ def copy_upload(source: Path, root: Path, destination: Path, limit: int) -> None
             if not stat.S_ISREG(attributes.st_mode) or attributes.st_size > limit:
                 raise ValueError("Upload size or file type is not allowed")
             with os.fdopen(descriptor, "rb", closefd=False) as source_file:
-                with destination.open("xb") as output:
-                    created = True
+                output_descriptor = os.open(
+                    destination, os.O_CREAT | os.O_EXCL | os.O_WRONLY | os.O_NOFOLLOW, 0o600
+                )
+                created = True
+                with os.fdopen(output_descriptor, "wb") as output:
                     remaining = limit
                     while chunk := source_file.read(min(65536, remaining + 1)):
                         if len(chunk) > remaining:

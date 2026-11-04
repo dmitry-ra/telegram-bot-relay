@@ -64,18 +64,22 @@ async def trial(config: Config, chat: int, directory: Path, seconds: int) -> Non
     journal = Journal(Path(config.data_dir), config.rotate, config.timezone)
     client = Client(secret(config.token_file))
     service = Service(config, journal, client)
-    server = uvicorn.Server(
-        uvicorn.Config(
-            create_app(service.operations, secret(config.api_token_file)),
-            host="127.0.0.1",
-            port=config.port,
-            log_level="warning",
-            access_log=False,
-        )
-    )
-    tasks = [asyncio.create_task(service.run()), asyncio.create_task(server.serve())]
+    server: uvicorn.Server | None = None
+    tasks: list[asyncio.Task[None]] = []
     outcomes: list[object] = []
     try:
+        async with asyncio.timeout(15):
+            await service.initialize()
+        server = uvicorn.Server(
+            uvicorn.Config(
+                create_app(service.operations, secret(config.api_token_file)),
+                host="127.0.0.1",
+                port=config.port,
+                log_level="warning",
+                access_log=False,
+            )
+        )
+        tasks = [asyncio.create_task(service.run()), asyncio.create_task(server.serve())]
         async with asyncio.timeout(15):
             while not server.started or service.bot_id is None:
                 for task in tasks:
@@ -156,13 +160,16 @@ async def trial(config: Config, chat: int, directory: Path, seconds: int) -> Non
             except TimeoutError:
                 print("No control incoming message during trial window", flush=True)
     finally:
-        server.should_exit = True
-        tasks[0].cancel()
-        try:
-            await asyncio.wait_for(asyncio.shield(tasks[1]), 5)
-        except TimeoutError:
-            tasks[1].cancel()
-        await asyncio.gather(*tasks, return_exceptions=True)
+        if server is not None:
+            server.should_exit = True
+        if tasks:
+            tasks[0].cancel()
+            try:
+                await asyncio.wait_for(asyncio.shield(tasks[1]), 5)
+            except TimeoutError:
+                tasks[1].cancel()
+            await asyncio.gather(*tasks, return_exceptions=True)
+        service.close()
         await client.close()
         write_evidence(
             directory / "outcomes.json",

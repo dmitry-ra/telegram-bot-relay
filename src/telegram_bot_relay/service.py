@@ -258,20 +258,35 @@ class Service:
                 logger.warning("gateway_delivery_error")
                 await asyncio.sleep(2)
 
-    async def run(self) -> None:
-        self.bot_id = await self.client.identity()
-        if self.archive_bot is not None and self.archive_bot != self.bot_id:
+    async def initialize(self) -> None:
+        if self.bot_lock is not None and not self.bot_lock.closed:
+            return
+        bot_id = await self.client.identity()
+        if self.archive_bot is not None and self.archive_bot != bot_id:
             raise ValueError("Archive belongs to a different bot")
         root = Path.home() / ".local/state/telegram-bot-relay/locks"
         root.mkdir(parents=True, exist_ok=True, mode=0o700)
-        self.bot_lock = (root / f"{self.bot_id}.lock").open("a")
+        lock = (root / f"{bot_id}.lock").open("a")
         try:
-            fcntl.flock(self.bot_lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
-            self.journal.append("bot_started", {"bot_id": self.bot_id})
+            fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            self.journal.append("bot_started", {"bot_id": bot_id})
+        except BaseException:
+            lock.close()
+            raise
+        self.bot_lock = lock
+        self.bot_id = bot_id
+
+    def close(self) -> None:
+        if self.bot_lock is not None:
+            self.bot_lock.close()
+
+    async def run(self) -> None:
+        await self.initialize()
+        try:
             async with asyncio.TaskGroup() as tasks:
                 tasks.create_task(self.poll())
                 tasks.create_task(self.processing())
                 if self.config.gateway:
                     tasks.create_task(self.forwarding())
         finally:
-            self.bot_lock.close()
+            self.close()

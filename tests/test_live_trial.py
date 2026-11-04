@@ -36,6 +36,12 @@ def runtime(monkeypatch: pytest.MonkeyPatch) -> dict[str, Any]:
             self.operations = object()
             self.bot_id = 123 if state["ready"] else None
 
+        async def initialize(self) -> None:
+            pass
+
+        def close(self) -> None:
+            pass
+
         async def run(self) -> None:
             await asyncio.Event().wait()
 
@@ -175,3 +181,20 @@ def test_evidence_files_are_private_and_public_existing_files_are_preserved(tmp_
     with pytest.raises(ValueError, match="Evidence files"):
         live_trial.write_evidence(path, b"overwrite")
     assert path.read_bytes() == b"new"
+
+
+def test_trial_startup_validation_precedes_http_server(
+    tmp_path: Path, runtime: dict[str, Any]
+) -> None:
+    from unittest.mock import AsyncMock, patch
+
+    with (
+        patch.object(
+            live_trial.Service, "initialize", new=AsyncMock(side_effect=RuntimeError("identity"))
+        ),
+        patch.object(live_trial.uvicorn, "Server") as server,
+    ):
+        with pytest.raises(RuntimeError, match="identity"):
+            asyncio.run(live_trial.trial(configuration(tmp_path), 101, tmp_path / "trial", 1))
+        server.assert_not_called()
+    assert runtime["client_closed"]
