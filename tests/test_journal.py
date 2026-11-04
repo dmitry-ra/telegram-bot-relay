@@ -35,7 +35,7 @@ def test_rotation_reader_and_recovery(tmp_path: Path) -> None:
         stream.write(b'{"partial":')
     journal = Journal(tmp_path, clock=lambda: now)
     assert list(journal.records())[-1].type == "tail_recovered"
-    assert (new.parent / "incomplete-tail.bin").read_bytes() == b'{"partial":'
+    assert [p.read_bytes() for p in new.parent.glob("incomplete-tail-*.bin")] == [b'{"partial":']
     journal.close()
 
 
@@ -43,8 +43,8 @@ def test_rotation_crash_after_link(tmp_path: Path) -> None:
     journal = Journal(tmp_path)
     old = journal.period
     next_dir = "00000000000000000003-next"
-    (tmp_path / next_dir).mkdir()
-    (tmp_path / next_dir / "events.jsonl").touch()
+    (tmp_path / next_dir).mkdir(mode=0o700)
+    (tmp_path / next_dir / "events.jsonl").touch(mode=0o600)
     journal._append("rotate", {"next_events": f"../{next_dir}/events.jsonl"})
     journal.close()
     journal = Journal(tmp_path)
@@ -56,8 +56,8 @@ def test_rotation_crash_after_link(tmp_path: Path) -> None:
 def test_rotation_crash_before_link(tmp_path: Path) -> None:
     journal = Journal(tmp_path)
     next_dir = tmp_path / "00000000000000000003-next"
-    next_dir.mkdir()
-    (next_dir / "events.jsonl").touch()
+    next_dir.mkdir(mode=0o700)
+    (next_dir / "events.jsonl").touch(mode=0o600)
     old = journal.root / journal.period / "events.jsonl"
     journal.close()
     journal = Journal(tmp_path)

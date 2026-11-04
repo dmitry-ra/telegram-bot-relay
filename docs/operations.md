@@ -8,7 +8,10 @@ Install pinned uv 0.13.6; uv sync --locked --group dev creates the pinned
 development Python3.14.10 environment. Python3.12-3.14 is tested by CI.
 Copy examples/config.toml to a private directory, set real paths and numeric
 allowlists, and create separate token files with permissions 0600. Token files
-contain only the value, not an environment assignment.
+contain only the value, not an environment assignment. Existing archive roots and
+segment directories must be private (0700); event files and the writer lock must
+be private (0600). Startup rejects group/other permissions before reading records;
+it does not silently change existing archive permissions.
 
 Start with uv run --locked telegram-bot-relay --config /absolute/config.toml.
 For installed packages use the same command without uv run. Optional user

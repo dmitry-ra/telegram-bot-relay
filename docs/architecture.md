@@ -42,7 +42,9 @@ Cron rotation uses the configured timezone and creates directories only when
 events occur. Each closed events.jsonl ends with a relative next_events link;
 the next segment starts with a reverse link. A new directory is created before
 publishing its link. Recovery completes an interrupted handoff and preserves
-an incomplete active-file tail before removing it. Complete malformed lines,
+an incomplete active-file tail before removing it. Each recovery backup is keyed
+by source offset and content hash, atomically replaced and directory-synced before
+truncation, preserving distinct tails and making crash retries idempotent. Complete malformed lines,
 sequence gaps, unsafe paths and broken closed-segment links cause startup failure.
 Late attachment results go into the active journal, referencing the original
 message period; the bytes remain in that period's attachments directory.

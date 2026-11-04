@@ -4,6 +4,7 @@ import fcntl
 import os
 from collections.abc import Callable, Iterator
 from datetime import UTC, datetime
+from hashlib import sha256
 from pathlib import Path
 
 from pydantic import JsonValue
@@ -25,6 +26,24 @@ def sync_directory(path: Path) -> None:
         os.close(fd)
 
 
+def private_path(path: Path) -> None:
+    if path.stat().st_mode & 0o077:
+        raise ValueError("Archive paths must not grant group or other permissions")
+
+
+def backup_tail(path: Path, offset: int, tail: bytes) -> None:
+    backup = path.with_name(f"incomplete-tail-{offset}-{sha256(tail).hexdigest()}.bin")
+    temporary = backup.with_suffix(".tmp")
+    descriptor = os.open(temporary, os.O_CREAT | os.O_TRUNC | os.O_WRONLY | os.O_NOFOLLOW, 0o600)
+    with os.fdopen(descriptor, "wb") as saved:
+        os.fchmod(saved.fileno(), 0o600)
+        saved.write(tail)
+        saved.flush()
+        os.fsync(saved.fileno())
+    os.replace(temporary, backup)
+    sync_directory(path.parent)
+
+
 class Journal:
     def __init__(
         self,
@@ -35,9 +54,14 @@ class Journal:
     ) -> None:
         self.root = root.resolve()
         self.root.mkdir(parents=True, exist_ok=True, mode=0o700)
+        private_path(self.root)
         self.clock = clock
-        self.lock = (self.root / ".writer.lock").open("a")
+        descriptor = os.open(
+            self.root / ".writer.lock", os.O_CREAT | os.O_RDWR | os.O_NOFOLLOW, 0o600
+        )
+        self.lock = os.fdopen(descriptor, "a")
         try:
+            private_path(self.root / ".writer.lock")
             fcntl.flock(self.lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
             self.seq = 0
             self.failed = False
@@ -50,9 +74,12 @@ class Journal:
     def _recover(self) -> None:
         paths = sorted(self.root.glob("*/events.jsonl"))
         recovered: str | None = None
-        for index, path in enumerate(paths):
+        for path in paths:
             if path.is_symlink() or path.parent.is_symlink():
                 raise ValueError("Symlink archive segments are not supported")
+            private_path(path.parent)
+            private_path(path)
+        for index, path in enumerate(paths):
             with path.open("r+b") as stream:
                 valid_end = 0
                 for line in stream:
@@ -60,15 +87,12 @@ class Journal:
                         if index != len(paths) - 1:
                             raise ValueError("Partial line in closed segment")
                         recovered = str(path.relative_to(self.root))
-                        backup = path.with_name("incomplete-tail.bin")
-                        with backup.open("ab") as saved:
-                            saved.write(line)
-                            saved.flush()
-                            os.fsync(saved.fileno())
+                        backup_tail(path, valid_end, line)
                         stream.seek(valid_end)
                         stream.truncate()
                         stream.flush()
                         os.fsync(stream.fileno())
+                        sync_directory(path.parent)
                         break
                     record = Record.model_validate_json(line)
                     if record.seq != self.seq + 1 or record.period != path.parent.name:
@@ -78,6 +102,7 @@ class Journal:
         self.period = paths[-1].parent.name if paths else self._name()
         directory = self.root / self.period
         directory.mkdir(exist_ok=True, mode=0o700)
+        private_path(directory)
         (directory / "events.jsonl").touch(mode=0o600, exist_ok=True)
         sync_directory(directory)
         sync_directory(self.root)
@@ -94,6 +119,7 @@ class Journal:
                 raise ValueError("Invalid rotation path")
             self.period = new_path.parent.name
             new_path.parent.mkdir(exist_ok=True, mode=0o700)
+            private_path(new_path.parent)
             new_path.touch(mode=0o600, exist_ok=True)
             self._append("segment_started", {"prev_events": f"../{last.period}/events.jsonl"})
         elif last is None or last.period != self.period:
