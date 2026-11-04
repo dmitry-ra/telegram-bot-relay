@@ -28,7 +28,7 @@ from aiogram.methods import (
 from aiogram.types import FSInputFile
 from pydantic import JsonValue, TypeAdapter
 
-from telegram_bot_relay.application.models import Operation, SendMedia
+from telegram_bot_relay.application.models import Operation, SendMedia, ThreadAddress
 
 
 class RawUpdates(TelegramMethod[list[dict[str, JsonValue]]]):
@@ -82,9 +82,10 @@ class Client:
 
     async def execute(self, operation: Operation) -> JsonValue:
         params: dict[str, Any] = operation.model_dump(exclude={"method"}, exclude_none=True)
-        thread = params.pop("thread_id", None)
-        if thread is not None:
-            params["message_thread_id"] = thread
+        if isinstance(operation, ThreadAddress):
+            thread = params.pop("thread_id", None)
+            if thread is not None:
+                params["message_thread_id"] = thread
         reply = params.pop("reply_to", None)
         if reply is not None:
             params["reply_parameters"] = {"message_id": reply}

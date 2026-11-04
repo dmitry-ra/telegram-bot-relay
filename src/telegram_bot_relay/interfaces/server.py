@@ -41,7 +41,15 @@ class Security:
             return
         host = headers.get(b"host", b"").decode("latin1")
         origin = headers.get(b"origin")
-        if urlsplit("http://" + host).hostname not in ("localhost", "127.0.0.1") or (
+        try:
+            address = urlsplit("http://" + host)
+            hostname = address.hostname
+            _ = address.port
+            if address.netloc != host or address.username is not None:
+                hostname = None
+        except ValueError:
+            hostname = None
+        if hostname not in ("localhost", "127.0.0.1") or (
             origin is not None
             and origin.decode("latin1") not in ("http://" + host, "https://" + host)
         ):

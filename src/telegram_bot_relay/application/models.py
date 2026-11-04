@@ -9,10 +9,13 @@ from telegram_bot_relay.config import StrictModel
 
 class Address(StrictModel):
     chat_id: int
+
+
+class ThreadAddress(Address):
     thread_id: int | None = None
 
 
-class SendMessage(Address):
+class SendMessage(ThreadAddress):
     method: Literal["send_message"] = "send_message"
     text: str = Field(min_length=1, max_length=4096)
     reply_to: int | None = None
@@ -36,7 +39,7 @@ class Media(StrictModel):
         return self
 
 
-class SendMedia(Address):
+class SendMedia(ThreadAddress):
     method: Literal["send_media"] = "send_media"
     media: list[Media] = Field(min_length=1, max_length=10)
     reply_to: int | None = None
@@ -50,7 +53,7 @@ class SendMedia(Address):
         return self
 
 
-class Transfer(Address):
+class Transfer(ThreadAddress):
     method: Literal["forward_message", "copy_message"]
     from_chat_id: int
     message_id: int

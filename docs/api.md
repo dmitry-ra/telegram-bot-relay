@@ -42,3 +42,10 @@ update types are preserved, including forwards, entities, captions, album IDs,
 edits, polls, callbacks, service events and unknown fields. No automatic content
 interpretation, transcription, moderation, generic Bot API execution or webhook
 ingress is implemented. See docs/operations.md for execution and testing.
+
+Polling explicitly subscribes to the update categories known to the pinned SDK,
+including opt-in reaction categories. New Telegram update categories may require
+an SDK update before subscription. Every received update, including unknown
+fields and envelopes, is retained as raw JSON. Omitting `allowed_updates` would
+reuse the bot's previous subscription, while an empty list excludes reactions;
+neither expresses an all-future-categories subscription with reactions enabled.

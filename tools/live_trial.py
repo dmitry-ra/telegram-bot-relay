@@ -12,6 +12,7 @@ from mcp import ClientSession
 from mcp.client.streamable_http import streamable_http_client
 from mcp.shared._httpx_utils import create_mcp_http_client
 
+from telegram_bot_relay.application.models import Outcome
 from telegram_bot_relay.config import Config, load, secret
 from telegram_bot_relay.interfaces.server import create_app
 from telegram_bot_relay.journal.writer import Journal
@@ -32,6 +33,13 @@ def png() -> bytes:
         + chunk(b"IDAT", zlib.compress(rows))
         + chunk(b"IEND", b"")
     )
+
+
+def sent_outcome(value: object) -> Outcome:
+    outcome = Outcome.model_validate(value)
+    if outcome.status != "sent":
+        raise RuntimeError("Trial operation was not sent")
+    return outcome
 
 
 async def trial(config: Config, chat: int, directory: Path, seconds: int) -> None:
@@ -74,7 +82,8 @@ async def trial(config: Config, chat: int, directory: Path, seconds: int) -> Non
                     "text": "Telegram Bot Relay: HTTP test passed. Send RELAY_INBOUND_CHECK to this bot to test incoming delivery.",
                 },
             )
-            outcomes.append(response.json())
+            response.raise_for_status()
+            outcomes.append(sent_outcome(response.json()).model_dump(mode="json"))
             async with streamable_http_client(url + "/mcp", http_client=http) as (read, write):
                 async with ClientSession(read, write) as session:
                     await session.initialize()
@@ -114,23 +123,26 @@ async def trial(config: Config, chat: int, directory: Path, seconds: int) -> Non
                         ),
                     ]:
                         result = await session.call_tool(tool, {"request": request})
-                        outcomes.append(result.model_dump(mode="json"))
                         if result.is_error:
                             raise RuntimeError("MCP trial operation failed")
+                        outcomes.append(
+                            sent_outcome(result.structured_content).model_dump(mode="json")
+                        )
             print("REAL_BOT_READY", flush=True)
-            async with asyncio.timeout(seconds):
-                while True:
-                    for task in tasks:
-                        if task.done():
-                            task.result()
-                            raise RuntimeError("Trial server stopped")
-                    messages = [r for r in journal.records() if r.type == "message_received"]
-                    if any("RELAY_INBOUND_CHECK" in json.dumps(r.data) for r in messages):
-                        await asyncio.sleep(2)
-                        break
-                    await asyncio.sleep(0.2)
-    except TimeoutError:
-        print("No control incoming message during trial window", flush=True)
+            try:
+                async with asyncio.timeout(seconds):
+                    while True:
+                        for task in tasks:
+                            if task.done():
+                                task.result()
+                                raise RuntimeError("Trial server stopped")
+                        messages = [r for r in journal.records() if r.type == "message_received"]
+                        if any("RELAY_INBOUND_CHECK" in json.dumps(r.data) for r in messages):
+                            await asyncio.sleep(2)
+                            break
+                        await asyncio.sleep(0.2)
+            except TimeoutError:
+                print("No control incoming message during trial window", flush=True)
     finally:
         server.should_exit = True
         tasks[0].cancel()

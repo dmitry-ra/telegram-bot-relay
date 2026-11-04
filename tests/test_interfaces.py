@@ -117,6 +117,16 @@ def test_http_security_and_validation(tmp_path: Path) -> None:
                 assert (
                     await http.get(url + "/healthz", headers={**headers, "Host": "evil.example"})
                 ).status_code == 403
+                for host in (
+                    "[",
+                    "[invalid]",
+                    "localhost:bad:port",
+                    "user@localhost",
+                    "localhost/path",
+                ):
+                    assert (
+                        await http.get(url + "/healthz", headers={**headers, "Host": host})
+                    ).status_code == 403
                 assert (
                     await http.post(
                         url + "/v1/operations", content=b"x" * 1_048_577, headers=headers

@@ -122,18 +122,6 @@
             "title": "Chat Id",
             "type": "integer"
           },
-          "thread_id": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Thread Id"
-          },
           "method": {
             "const": "edit_message",
             "default": "edit_message",
@@ -242,18 +230,6 @@
           "chat_id": {
             "title": "Chat Id",
             "type": "integer"
-          },
-          "thread_id": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Thread Id"
           },
           "method": {
             "const": "set_reaction",
