@@ -4,6 +4,8 @@ import json
 
 from pydantic import JsonValue
 
+from telegram_bot_relay.telegram.events import event_and_actor
+
 
 def denial_notifications(
     original: dict[str, JsonValue],
@@ -12,9 +14,7 @@ def denial_notifications(
     access: dict[str, JsonValue],
     seq: int,
 ) -> list[str]:
-    event = next((v for k, v in original.items() if k != "update_id" and isinstance(v, dict)), {})
-    sender = event.get("from") or event.get("user")
-    sender = sender if isinstance(sender, dict) else {}
+    _, sender = event_and_actor(original)
     name = " ".join(str(sender[k]) for k in ("first_name", "last_name") if sender.get(k))
     username = sender.get("username")
     reason = access.get("reason")

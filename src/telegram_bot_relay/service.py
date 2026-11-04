@@ -24,6 +24,7 @@ from telegram_bot_relay.journal.writer import Journal
 from telegram_bot_relay.telegram.attachments import prepare
 from telegram_bot_relay.telegram.client import Client
 from telegram_bot_relay.telegram.denied import denial_notifications
+from telegram_bot_relay.telegram.events import event_and_actor
 from telegram_bot_relay.telegram.preview import format_preview
 
 logger = logging.getLogger(__name__)
@@ -171,14 +172,7 @@ class Service:
             source = self.journal.find(int(str(prepared.data["source_seq"])))
             original = source.data["original"]
             assert isinstance(original, dict)
-            event = next(
-                (v for k, v in original.items() if k != "update_id" and isinstance(v, dict)), {}
-            )
-            assert isinstance(event, dict)
-            sender = event.get("from", {})
-            if not sender and "old_reaction" in event and "new_reaction" in event:
-                sender = event.get("user", {})
-            sender = sender if isinstance(sender, dict) else {}
+            event, sender = event_and_actor(original)
             downloads: list[JsonValue] = []
             assets = prepared.data["attachments"]
             assert isinstance(assets, list)

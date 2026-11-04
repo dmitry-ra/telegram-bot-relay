@@ -22,6 +22,10 @@ class SendMessage(ThreadAddress):
     parse_mode: Literal["HTML", "MarkdownV2"] | None = None
 
 
+class ReplyMessage(SendMessage):
+    reply_to: int
+
+
 class Media(StrictModel):
     kind: Literal[
         "photo", "document", "voice", "audio", "video", "video_note", "animation", "sticker"

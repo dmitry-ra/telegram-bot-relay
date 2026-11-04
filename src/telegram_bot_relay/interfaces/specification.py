@@ -21,7 +21,7 @@ def openapi() -> dict[str, Any]:
     definitions["Inspection"] = inspection_response
     return {
         "openapi": "3.1.0",
-        "info": {"title": "Telegram Bot Relay", "version": "0.4.0"},
+        "info": {"title": "Telegram Bot Relay", "version": "0.4.1"},
         "security": [{"bearer": []}],
         "paths": {
             "/v1/custom-emoji": {
