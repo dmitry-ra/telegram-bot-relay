@@ -18,6 +18,10 @@ custom ID. Lookup is separate from formatting, bounded to three seconds, and
 saved with the prepared event for forwarding retries and recovery. Full lookup
 metadata is forwarded as `reaction_metadata`; original updates remain unchanged.
 No automatic thumbnail download, cache service or new message store is needed.
+If inline metadata would exceed Gateway's 65536-byte content limit, forwarding
+uses a reference to the existing prepared journal record. If the reference also
+cannot fit, optional metadata stays in the journal while the original content
+is forwarded. Original content that already exceeds the limit is not truncated.
 
 Built with Python>=3.12, aiogram3.31.0 and the MCP SDK. No database server,
 separate MCP proxy, automatic transcription or model provider is required.

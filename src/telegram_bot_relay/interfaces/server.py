@@ -92,9 +92,9 @@ class Security:
 def create_app(operations: Operations, token: str) -> ASGIApp:
     mcp: MCPServer[Any] = MCPServer("telegram-bot-relay")
 
-    @mcp.tool(annotations=ToolAnnotations(read_only_hint=True, destructive_hint=False))
+    @mcp.tool(annotations=ToolAnnotations(read_only_hint=False, destructive_hint=False))
     async def inspect_custom_emoji(request: InspectCustomEmoji) -> Inspection:
-        """Read custom emoji metadata and optionally download thumbnails; sends no messages."""
+        """Inspect emoji and optionally save thumbnails; writes audit records, sends no messages."""
         return await inspect_emoji(
             request, operations.config, operations.journal, operations.client, "mcp"
         )

@@ -1,7 +1,6 @@
 """Read-only custom emoji inspection through the existing Telegram client."""
 
 import asyncio
-from contextlib import suppress
 from typing import Annotated, Literal
 from uuid import uuid4
 
@@ -100,7 +99,10 @@ async def inspect_custom_emoji(
     )
     ids = list(dict.fromkeys(request.custom_emoji_ids))
     try:
-        metadata, missing = await lookup_custom_emoji(client, ids)
+        deadline = asyncio.get_running_loop().time() + config.attachments.timeout
+        async with asyncio.timeout(min(REACTION_METADATA_TIMEOUT, config.attachments.timeout)):
+            metadata, missing = await lookup_custom_emoji(client, ids)
+        remaining_bytes = config.attachments.max_bytes
         stickers: list[dict[str, JsonValue]] = []
         for sticker in metadata:
             if request.download_thumbnail:
@@ -113,16 +115,27 @@ async def inspect_custom_emoji(
                     folder = journal.root / record.period / "inspections" / inspection_id
                     path = folder / (str(len(stickers)) + ".webp")
                     try:
+                        if remaining_bytes <= 0:
+                            raise ValueError("Inspection thumbnail byte budget exhausted")
+                        if asyncio.get_running_loop().time() >= deadline:
+                            raise TimeoutError("Inspection time budget exhausted")
                         folder.mkdir(parents=True, exist_ok=True, mode=0o700)
-                        await client.download(
-                            file_id, path, config.attachments.max_bytes, config.attachments.timeout
-                        )
+                        async with asyncio.timeout_at(deadline):
+                            await client.download(
+                                file_id, path, remaining_bytes, config.attachments.timeout
+                            )
+                        size = path.stat().st_size
+                        if size > remaining_bytes:
+                            raise ValueError("Inspection thumbnail byte budget exceeded")
+                        remaining_bytes -= size
                         path.chmod(0o600)
                         sync_directory(folder)
                         download = {"status": "saved", "path": str(path)}
                     except (TelegramAPIError, TimeoutError, ValueError, OSError) as error:
-                        with suppress(OSError):
+                        try:
                             path.unlink(missing_ok=True)
+                        except OSError:
+                            remaining_bytes = 0
                         download = {"status": "failed", "error": type(error).__name__}
                 sticker["thumbnail_download"] = download
             stickers.append(sticker)

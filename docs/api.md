@@ -44,6 +44,12 @@ Optional thumbnail downloads honor the attachment download policy and report
 their status and local archive path. A thumbnail failure preserves available
 metadata. Inspection requests/results are journaled separately from outgoing
 operations; inspection never sends a message or changes a reaction.
+Inspection can write audit records and thumbnail files, so its MCP annotation is
+non-read-only and non-destructive. Metadata lookup is bounded to three seconds
+or the configured attachment timeout, whichever is shorter. All thumbnails in
+one request share the configured attachment byte and time limits; later files
+report failure once either budget is exhausted. These are request limits, not
+per-file allowances multiplied by the number of IDs.
 
 Files use exactly one local path or Telegram file_id. Albums contain 2-10
 photos/videos, only documents, or only audio. Document mode preserves bytes;

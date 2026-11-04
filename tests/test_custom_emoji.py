@@ -185,7 +185,7 @@ def test_http_and_mcp_inspection_share_authenticated_operation(tmp_path: Path) -
                         await session.initialize()
                         tools = await session.list_tools()
                         tool = next(t for t in tools.tools if t.name == "inspect_custom_emoji")
-                        assert tool.annotations is not None and tool.annotations.read_only_hint
+                        assert tool.annotations is not None and not tool.annotations.read_only_hint
                         assert tool.annotations.destructive_hint is False
                         result = await session.call_tool(
                             "inspect_custom_emoji", {"request": {"custom_emoji_ids": ["2"]}}
