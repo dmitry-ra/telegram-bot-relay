@@ -22,6 +22,48 @@ HTTP 200 carries an operation outcome: sent, denied, failed or uncertain. Inspec
 status, result and error; do not equate HTTP 200 with Telegram delivery.
 HTTP 400 is schema failure, 401 authentication, 403 origin/host, 413 body limit.
 
+Set `TELEGRAM_RELAY_API_TOKEN` securely in the launch environment and
+`TELEGRAM_RELAY_CHAT_ID` to an allowed destination. This complete standard-library
+example sends a message without putting a credential in the command line:
+
+```sh
+python - <<'PY'
+import json
+import os
+from urllib.request import Request, urlopen
+
+request = Request(
+    "http://127.0.0.1:10881/v1/operations",
+    data=json.dumps({
+        "method": "send_message",
+        "chat_id": int(os.environ["TELEGRAM_RELAY_CHAT_ID"]),
+        "text": "Build complete.",
+    }).encode(),
+    headers={
+        "Authorization": "Bearer " + os.environ["TELEGRAM_RELAY_API_TOKEN"],
+        "Content-Type": "application/json",
+    },
+    method="POST",
+)
+with urlopen(request, timeout=30) as response:
+    outcome = json.load(response)
+print(outcome["status"])
+if outcome["status"] == "sent":
+    print("message_id:", outcome["result"]["message_id"])
+else:
+    print(outcome.get("error"))
+PY
+```
+
+An illustrative successful outcome contains:
+
+```json
+{"operation_id":"example","status":"sent","result":{"message_id":42},"error":null}
+```
+
+An `uncertain` outcome can mean Telegram accepted the send; do not automatically
+repeat it. HTTP availability alone does not establish a Telegram send result.
+
 ## MCP tools
 
 Connect an MCP client to http://127.0.0.1:10881/mcp with the same Authorization

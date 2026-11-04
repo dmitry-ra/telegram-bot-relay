@@ -117,9 +117,10 @@ bootstrap API call or custom session-start script is required.
 
 ## 4. Bind incoming delivery to that conversation
 
-In Codex, use `/status` to obtain the session UUID. Verify that it uses the
-local background App Server supported by Gateway, rather than an isolated
-embedded instance. Copy Gateway's `examples/gateway.toml` and set:
+In Codex, use `/status` to obtain the session UUID. Follow Gateway's
+[runtime verification](https://github.com/dmitry-ra/message-gateway/blob/main/docs/getting-started.md#verify-the-codex-runtime)
+to establish that the local native App Server is available. Copy Gateway's
+`examples/gateway.toml` and set:
 
 ```toml
 [[targets]]

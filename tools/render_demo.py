@@ -69,8 +69,9 @@ def main() -> None:
         # The controlled program prints no host context. Reject accidental diagnostics
         # or terminal metadata rather than trying to redact arbitrary recordings.
         output = recording.read_text()
+        decoded = "".join(str(event[2]) for event in events if event[1] == "o")
         for marker in ("/home/", "/mnt/", "Traceback", "\u001b]", "user@", "SHELL"):
-            if marker in output or marker.encode("unicode_escape").decode() in output:
+            if marker in output or marker in decoded:
                 raise SystemExit("Unexpected private context or diagnostic in recording")
         run(
             [
