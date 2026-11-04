@@ -1,0 +1,63 @@
+[project]
+name = "telegram-bot-relay"
+version = "0.3.0"
+description = "A Telegram bot relay with rotating JSONL archives, HTTP and MCP operations"
+readme = "README.md"
+requires-python = ">=3.12"
+license = "MIT"
+dependencies = [
+  "aiogram==3.31.0",
+  "mcp==2.3.0",
+  "cronsim==2.7",
+  "uvicorn==0.54.0",
+  "starlette==1.10.0",
+  "pydantic==2.13.5",
+  "aiohttp==3.14.5",
+]
+
+[project.scripts]
+telegram-bot-relay = "telegram_bot_relay.cli:main"
+
+[build-system]
+requires = ["hatchling==1.33.0"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/telegram_bot_relay"]
+
+[tool.hatch.build.targets.wheel.force-include]
+"skills" = "telegram_bot_relay/skills"
+
+[tool.hatch.build.targets.sdist]
+include = ["/src", "/tests", "/tools", "/skills", "/examples", "/docs", "/systemd", "/AGENTS.md", "/.python-version"]
+
+[dependency-groups]
+dev = [
+  "black==26.10.1", "ruff==0.17.3", "mypy==2.4.1",
+  "pytest==9.2.0", "pytest-cov==7.1.0", "jsonschema==4.26.0",
+  "types-jsonschema==4.26.0.20261006",
+]
+
+[tool.black]
+line-length = 100
+target-version = ["py312"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+[tool.ruff.lint]
+select = ["E", "F", "W", "B", "I"]
+ignore = ["E501"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q --import-mode=importlib -m 'not live' --cov=telegram_bot_relay --cov-branch --cov-report=term-missing --cov-fail-under=90"
+markers = ["live: explicitly selected real bot test"]
+
+[tool.coverage.run]
+source = ["telegram_bot_relay"]
+branch = true

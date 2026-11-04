@@ -1,0 +1,60 @@
+{
+  "$defs": {
+    "JsonValue": {}
+  },
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "const": 1,
+      "default": 1,
+      "title": "Schema Version",
+      "type": "integer"
+    },
+    "seq": {
+      "minimum": 1,
+      "title": "Seq",
+      "type": "integer"
+    },
+    "timestamp": {
+      "title": "Timestamp",
+      "type": "string"
+    },
+    "period": {
+      "title": "Period",
+      "type": "string"
+    },
+    "type": {
+      "enum": [
+        "segment_started",
+        "bot_started",
+        "rotate",
+        "tail_recovered",
+        "message_received",
+        "message_prepared",
+        "gateway_started",
+        "gateway_accepted",
+        "operation_requested",
+        "operation_artifacts",
+        "operation_completed"
+      ],
+      "title": "Type",
+      "type": "string"
+    },
+    "data": {
+      "additionalProperties": {
+        "$ref": "#/$defs/JsonValue"
+      },
+      "title": "Data",
+      "type": "object"
+    }
+  },
+  "required": [
+    "seq",
+    "timestamp",
+    "period",
+    "type",
+    "data"
+  ],
+  "title": "Record",
+  "type": "object"
+}

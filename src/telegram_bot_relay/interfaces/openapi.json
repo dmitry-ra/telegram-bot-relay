@@ -1,0 +1,499 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Telegram Bot Relay",
+    "version": "0.3.0"
+  },
+  "security": [
+    {
+      "bearer": []
+    }
+  ],
+  "paths": {
+    "/v1/operations": {
+      "post": {
+        "operationId": "execute",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "discriminator": {
+                  "mapping": {
+                    "answer_callback": "#/components/schemas/Callback",
+                    "copy_message": "#/components/schemas/Transfer",
+                    "edit_message": "#/components/schemas/EditMessage",
+                    "forward_message": "#/components/schemas/Transfer",
+                    "send_media": "#/components/schemas/SendMedia",
+                    "send_message": "#/components/schemas/SendMessage",
+                    "set_reaction": "#/components/schemas/Reaction"
+                  },
+                  "propertyName": "method"
+                },
+                "oneOf": [
+                  {
+                    "$ref": "#/components/schemas/SendMessage"
+                  },
+                  {
+                    "$ref": "#/components/schemas/SendMedia"
+                  },
+                  {
+                    "$ref": "#/components/schemas/Transfer"
+                  },
+                  {
+                    "$ref": "#/components/schemas/EditMessage"
+                  },
+                  {
+                    "$ref": "#/components/schemas/Reaction"
+                  },
+                  {
+                    "$ref": "#/components/schemas/Callback"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Operation outcome; inspect status",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Outcome"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid operation"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Invalid origin"
+          },
+          "413": {
+            "description": "Request too large"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Callback": {
+        "additionalProperties": false,
+        "properties": {
+          "method": {
+            "const": "answer_callback",
+            "default": "answer_callback",
+            "title": "Method",
+            "type": "string"
+          },
+          "chat_id": {
+            "title": "Chat Id",
+            "type": "integer"
+          },
+          "callback_query_id": {
+            "minLength": 1,
+            "title": "Callback Query Id",
+            "type": "string"
+          },
+          "text": {
+            "default": "",
+            "maxLength": 200,
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "chat_id",
+          "callback_query_id"
+        ],
+        "title": "Callback",
+        "type": "object"
+      },
+      "EditMessage": {
+        "additionalProperties": false,
+        "properties": {
+          "chat_id": {
+            "title": "Chat Id",
+            "type": "integer"
+          },
+          "thread_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Thread Id"
+          },
+          "method": {
+            "const": "edit_message",
+            "default": "edit_message",
+            "title": "Method",
+            "type": "string"
+          },
+          "message_id": {
+            "title": "Message Id",
+            "type": "integer"
+          },
+          "text": {
+            "maxLength": 4096,
+            "minLength": 1,
+            "title": "Text",
+            "type": "string"
+          },
+          "parse_mode": {
+            "anyOf": [
+              {
+                "enum": [
+                  "HTML",
+                  "MarkdownV2"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Parse Mode"
+          }
+        },
+        "required": [
+          "chat_id",
+          "message_id",
+          "text"
+        ],
+        "title": "EditMessage",
+        "type": "object"
+      },
+      "Media": {
+        "additionalProperties": false,
+        "properties": {
+          "kind": {
+            "enum": [
+              "photo",
+              "document",
+              "voice",
+              "audio",
+              "video",
+              "video_note",
+              "animation",
+              "sticker"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "file_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "File Id"
+          },
+          "path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Path"
+          },
+          "caption": {
+            "anyOf": [
+              {
+                "maxLength": 1024,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Caption"
+          }
+        },
+        "required": [
+          "kind"
+        ],
+        "title": "Media",
+        "type": "object"
+      },
+      "Reaction": {
+        "additionalProperties": false,
+        "properties": {
+          "chat_id": {
+            "title": "Chat Id",
+            "type": "integer"
+          },
+          "thread_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Thread Id"
+          },
+          "method": {
+            "const": "set_reaction",
+            "default": "set_reaction",
+            "title": "Method",
+            "type": "string"
+          },
+          "message_id": {
+            "title": "Message Id",
+            "type": "integer"
+          },
+          "emoji": {
+            "maxLength": 32,
+            "minLength": 1,
+            "title": "Emoji",
+            "type": "string"
+          }
+        },
+        "required": [
+          "chat_id",
+          "message_id",
+          "emoji"
+        ],
+        "title": "Reaction",
+        "type": "object"
+      },
+      "SendMedia": {
+        "additionalProperties": false,
+        "properties": {
+          "chat_id": {
+            "title": "Chat Id",
+            "type": "integer"
+          },
+          "thread_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Thread Id"
+          },
+          "method": {
+            "const": "send_media",
+            "default": "send_media",
+            "title": "Method",
+            "type": "string"
+          },
+          "media": {
+            "items": {
+              "$ref": "#/components/schemas/Media"
+            },
+            "maxItems": 10,
+            "minItems": 1,
+            "title": "Media",
+            "type": "array"
+          },
+          "reply_to": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Reply To"
+          }
+        },
+        "required": [
+          "chat_id",
+          "media"
+        ],
+        "title": "SendMedia",
+        "type": "object"
+      },
+      "SendMessage": {
+        "additionalProperties": false,
+        "properties": {
+          "chat_id": {
+            "title": "Chat Id",
+            "type": "integer"
+          },
+          "thread_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Thread Id"
+          },
+          "method": {
+            "const": "send_message",
+            "default": "send_message",
+            "title": "Method",
+            "type": "string"
+          },
+          "text": {
+            "maxLength": 4096,
+            "minLength": 1,
+            "title": "Text",
+            "type": "string"
+          },
+          "reply_to": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Reply To"
+          },
+          "parse_mode": {
+            "anyOf": [
+              {
+                "enum": [
+                  "HTML",
+                  "MarkdownV2"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Parse Mode"
+          }
+        },
+        "required": [
+          "chat_id",
+          "text"
+        ],
+        "title": "SendMessage",
+        "type": "object"
+      },
+      "Transfer": {
+        "additionalProperties": false,
+        "properties": {
+          "chat_id": {
+            "title": "Chat Id",
+            "type": "integer"
+          },
+          "thread_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Thread Id"
+          },
+          "method": {
+            "enum": [
+              "forward_message",
+              "copy_message"
+            ],
+            "title": "Method",
+            "type": "string"
+          },
+          "from_chat_id": {
+            "title": "From Chat Id",
+            "type": "integer"
+          },
+          "message_id": {
+            "title": "Message Id",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "chat_id",
+          "method",
+          "from_chat_id",
+          "message_id"
+        ],
+        "title": "Transfer",
+        "type": "object"
+      },
+      "JsonValue": {},
+      "Outcome": {
+        "additionalProperties": false,
+        "properties": {
+          "operation_id": {
+            "title": "Operation Id",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "sent",
+              "denied",
+              "failed",
+              "uncertain"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "result": {
+            "$ref": "#/components/schemas/JsonValue",
+            "default": null
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Error"
+          }
+        },
+        "required": [
+          "operation_id",
+          "status"
+        ],
+        "title": "Outcome",
+        "type": "object"
+      }
+    },
+    "securitySchemes": {
+      "bearer": {
+        "type": "http",
+        "scheme": "bearer"
+      }
+    }
+  }
+}

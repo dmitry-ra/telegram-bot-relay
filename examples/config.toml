@@ -1,0 +1,28 @@
+token_file = "/home/example/.config/telegram-bot-relay/bot.token"
+api_token_file = "/home/example/.config/telegram-bot-relay/api.token"
+data_dir = "/home/example/.local/share/telegram-bot-relay/example"
+port = 10881
+rotate = "0 0 * * *"
+timezone = "UTC"
+notify_chats = []
+
+[access]
+allowed_users = [123456789]
+allowed_chats = []
+outgoing_chats = [123456789]
+public = false
+groups = false
+
+[attachments]
+download = true
+download_denied = false
+max_bytes = 20000000
+timeout = 60
+upload_roots = ["/home/example/outbox"]
+
+# Omit this table for standalone archival and Telegram sending.
+# [gateway]
+# url = "http://127.0.0.1:10880"
+# target = "work"
+# start = "latest"
+# token_file = "/home/example/.config/message-gateway/api.token"
