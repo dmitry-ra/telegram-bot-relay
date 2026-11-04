@@ -22,7 +22,7 @@ MEDIA = {
 def clean(value: JsonValue) -> str:
     if not isinstance(value, str):
         return ""
-    return " ".join("".join(c if c.isprintable() else " " for c in value).split())
+    return " ".join("".join(c if c.isprintable() or c == "\u200d" else " " for c in value).split())
 
 
 def reply_context(event: dict[str, JsonValue]) -> str:
@@ -47,7 +47,78 @@ def reply_context(event: dict[str, JsonValue]) -> str:
     return label
 
 
-def format_preview(event: dict[str, JsonValue]) -> str:
+def custom_labels(metadata: dict[str, JsonValue]) -> dict[str, str]:
+    stickers = metadata.get("stickers")
+    if not isinstance(stickers, list):
+        return {}
+    result = {}
+    for sticker in stickers:
+        if not isinstance(sticker, dict):
+            continue
+        identity = sticker.get("custom_emoji_id")
+        if not isinstance(identity, str):
+            continue
+        emoji = clean(sticker.get("emoji"))
+        name = clean(sticker.get("set_name"))
+        if emoji:
+            result[identity] = emoji + (f" (custom, {name})" if name else " (custom)")
+        elif name:
+            result[identity] = f"Custom emoji {clean(identity)} ({name})"
+    return result
+
+
+def reactions(value: JsonValue, labels: dict[str, str]) -> dict[tuple[str, str], str] | None:
+    if not isinstance(value, list):
+        return None
+    result: dict[tuple[str, str], str] = {}
+    for item in value:
+        if not isinstance(item, dict):
+            return None
+        kind = item.get("type")
+        if kind == "paid":
+            result[("paid", "")] = "Paid \u2b50"
+            continue
+        field = {"emoji": "emoji", "custom_emoji": "custom_emoji_id"}.get(str(kind))
+        identity = item.get(field) if field else None
+        if not isinstance(identity, str) or not clean(identity):
+            return None
+        label = clean(identity)
+        if kind == "custom_emoji":
+            label = labels.get(identity, "Custom emoji " + label)
+        result[(str(kind), identity)] = label
+    return result
+
+
+def reaction_context(event: dict[str, JsonValue], metadata: dict[str, JsonValue]) -> list[str]:
+    label = "Reaction"
+    message_id = event.get("message_id")
+    if type(message_id) is int and message_id >= 0:
+        label += f" #{message_id}"
+    labels = custom_labels(metadata)
+    old = reactions(event.get("old_reaction"), labels)
+    new = reactions(event.get("new_reaction"), labels)
+    if old is None or new is None:
+        return [label, "Updated"]
+    parts = [label]
+    added = [name for identity, name in new.items() if identity not in old]
+    removed = [name for identity, name in old.items() if identity not in new]
+    if added:
+        parts.append("Set " + " ".join(added))
+    if removed:
+        parts.append("Clear " + " ".join(removed))
+    return parts if added or removed else [label, "Unchanged"]
+
+
+def bounded_preview(parts: list[str]) -> str:
+    preview = " | ".join(parts)
+    return preview if len(preview) <= 160 else preview[:157] + "..."
+
+
+def format_preview(
+    event: dict[str, JsonValue], metadata: dict[str, JsonValue] | None = None
+) -> str:
+    if "old_reaction" in event or "new_reaction" in event:
+        return bounded_preview(reaction_context(event, metadata or {}))
     parts: list[str] = []
     reply = reply_context(event)
     if reply:
@@ -80,5 +151,4 @@ def format_preview(event: dict[str, JsonValue]) -> str:
             if "data" in event or "game_short_name" in event
             else "\U0001f4e8 Telegram event"
         )
-    preview = " | ".join(parts)
-    return preview if len(preview) <= 160 else preview[:157] + "..."
+    return bounded_preview(parts)

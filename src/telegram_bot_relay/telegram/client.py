@@ -69,6 +69,10 @@ class Client:
     async def identity(self) -> int:
         return (await self.bot.get_me()).id
 
+    async def custom_emoji(self, ids: list[str]) -> list[JsonValue]:
+        stickers = await self.bot.get_custom_emoji_stickers(custom_emoji_ids=ids)
+        return [sticker.model_dump(mode="json", exclude_unset=True) for sticker in stickers]
+
     async def updates(self, offset: int | None, timeout: int = 25) -> list[dict[str, JsonValue]]:
         from aiogram.types import Update
 

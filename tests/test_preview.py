@@ -120,3 +120,156 @@ def test_reply_forward_and_media_remain_visible_in_shortened_preview() -> None:
 
 def test_malformed_reply_fields_do_not_mark_ordinary_text_as_a_reply() -> None:
     assert format_preview({"reply_to_message": None, "quote": [], "text": "Current"}) == "Current"
+
+
+@pytest.mark.parametrize(
+    ("old", "new", "expected"),
+    [
+        ([], [{"type": "emoji", "emoji": "\U0001f44d"}], "Set \U0001f44d"),
+        (
+            [],
+            [{"type": "emoji", "emoji": "\u2764\ufe0f\u200d\U0001f525"}],
+            "Set \u2764\ufe0f\u200d\U0001f525",
+        ),
+        ([{"type": "emoji", "emoji": "\U0001f440"}], [], "Clear \U0001f440"),
+        (
+            [{"type": "emoji", "emoji": "\U0001f44d"}],
+            [{"type": "emoji", "emoji": "\U0001f525"}],
+            "Set \U0001f525 | Clear \U0001f44d",
+        ),
+        (
+            [{"type": "emoji", "emoji": "\U0001f44d"}],
+            [{"type": "emoji", "emoji": "\U0001f44d"}, {"type": "emoji", "emoji": "\U0001f525"}],
+            "Set \U0001f525",
+        ),
+        (
+            [{"type": "emoji", "emoji": "\U0001f44d"}, {"type": "emoji", "emoji": "\U0001f525"}],
+            [],
+            "Clear \U0001f44d \U0001f525",
+        ),
+        (
+            [{"type": "emoji", "emoji": "\U0001f44d"}, {"type": "emoji", "emoji": "\U0001f525"}],
+            [{"type": "emoji", "emoji": "\U0001f525"}, {"type": "emoji", "emoji": "\U0001f44d"}],
+            "Unchanged",
+        ),
+        ([], [], "Unchanged"),
+        (
+            [],
+            [{"type": "emoji", "emoji": "\U0001f44d"}, {"type": "emoji", "emoji": "\U0001f44d"}],
+            "Set \U0001f44d",
+        ),
+        ([], [{"type": "custom_emoji", "custom_emoji_id": "1234"}], "Set Custom emoji 1234"),
+        ([{"type": "custom_emoji", "custom_emoji_id": "1234"}], [], "Clear Custom emoji 1234"),
+        ([], [{"type": "paid"}], "Set Paid \u2b50"),
+        ([{"type": "paid"}], [], "Clear Paid \u2b50"),
+        (None, [], "Updated"),
+        ([], None, "Updated"),
+        ("invalid", [], "Updated"),
+        ([], ["invalid"], "Updated"),
+        ([], [{"type": "emoji", "emoji": " \n"}], "Updated"),
+        ([], [{"type": "custom_emoji", "custom_emoji_id": 1234}], "Updated"),
+        ([], [{"type": "future_reaction", "detail": "unknown"}], "Updated"),
+    ],
+)
+def test_reaction_changes_preserve_original(old: JsonValue, new: JsonValue, expected: str) -> None:
+    event: dict[str, JsonValue] = {
+        "message_id": 7824,
+        "old_reaction": old,
+        "new_reaction": new,
+    }
+    original = deepcopy(event)
+    assert format_preview(event) == "Reaction #7824 | " + expected
+    assert event == original
+
+
+@pytest.mark.parametrize("message_id", [None, True, -1, "7824"])
+def test_reaction_invalid_message_id_is_not_displayed(message_id: JsonValue) -> None:
+    assert format_preview({"message_id": message_id, "old_reaction": [], "new_reaction": []}) == (
+        "Reaction | Unchanged"
+    )
+
+
+def test_partial_reaction_and_long_labels_are_safe_and_bounded() -> None:
+    assert format_preview({"old_reaction": []}) == "Reaction | Updated"
+    assert format_preview({"new_reaction": []}) == "Reaction | Updated"
+    event: dict[str, JsonValue] = {
+        "message_id": 7824,
+        "old_reaction": [],
+        "new_reaction": [{"type": "custom_emoji", "custom_emoji_id": "1234\n" * 100}],
+    }
+    original = deepcopy(event)
+    preview = format_preview(event)
+    assert len(preview) == 160
+    assert preview.startswith("Reaction #7824 | Set Custom emoji 1234 1234")
+    assert preview.endswith("...")
+    assert event == original
+
+
+@pytest.mark.parametrize(
+    ("fields", "expected"),
+    [
+        ({"emoji": "\U0001f3e6"}, "\U0001f3e6 (custom)"),
+        ({"emoji": "\U0001f44b", "set_name": "ExamplePack"}, "\U0001f44b (custom, ExamplePack)"),
+        ({"set_name": "ExamplePack"}, "Custom emoji 123 (ExamplePack)"),
+        ({}, "Custom emoji 123"),
+        ({"emoji": None, "set_name": 7}, "Custom emoji 123"),
+        ({"emoji": "\U0001f44b", "set_name": "Pack\nName"}, "\U0001f44b (custom, Pack Name)"),
+    ],
+)
+@pytest.mark.parametrize("clear", [False, True])
+def test_custom_reaction_preview_uses_available_metadata(
+    fields: dict[str, JsonValue], expected: str, clear: bool
+) -> None:
+    reaction: JsonValue = {"type": "custom_emoji", "custom_emoji_id": "123"}
+    event: dict[str, JsonValue] = {
+        "message_id": 42,
+        "old_reaction": [reaction] if clear else [],
+        "new_reaction": [] if clear else [reaction],
+    }
+    metadata: dict[str, JsonValue] = {
+        "status": "ok",
+        "stickers": [{"custom_emoji_id": "123", **fields}],
+    }
+    before = deepcopy((event, metadata))
+    assert (
+        format_preview(event, metadata)
+        == f"Reaction #42 | {'Clear' if clear else 'Set'} {expected}"
+    )
+    assert (event, metadata) == before
+
+
+def test_distinct_custom_ids_with_same_base_are_a_replacement() -> None:
+    event: dict[str, JsonValue] = {
+        "old_reaction": [{"type": "custom_emoji", "custom_emoji_id": "1"}],
+        "new_reaction": [{"type": "custom_emoji", "custom_emoji_id": "2"}],
+    }
+    metadata: dict[str, JsonValue] = {
+        "stickers": [
+            {"custom_emoji_id": "1", "emoji": "\U0001f44d", "set_name": "First"},
+            {"custom_emoji_id": "2", "emoji": "\U0001f44d", "set_name": "Second"},
+        ]
+    }
+    assert format_preview(event, metadata) == (
+        "Reaction | Set \U0001f44d (custom, Second) | Clear \U0001f44d (custom, First)"
+    )
+
+
+@pytest.mark.parametrize("stickers", [None, "invalid", [None, {}, {"custom_emoji_id": 1}]])
+def test_malformed_metadata_falls_back_to_id(stickers: JsonValue) -> None:
+    event: dict[str, JsonValue] = {
+        "old_reaction": [],
+        "new_reaction": [{"type": "custom_emoji", "custom_emoji_id": "123"}],
+    }
+    assert format_preview(event, {"stickers": stickers}) == "Reaction | Set Custom emoji 123"
+
+
+def test_long_custom_set_label_is_bounded() -> None:
+    event: dict[str, JsonValue] = {
+        "old_reaction": [],
+        "new_reaction": [{"type": "custom_emoji", "custom_emoji_id": "123"}],
+    }
+    metadata: dict[str, JsonValue] = {
+        "stickers": [{"custom_emoji_id": "123", "emoji": "\U0001f44b", "set_name": "a" * 300}]
+    }
+    result = format_preview(event, metadata)
+    assert len(result) == 160 and result.endswith("...")

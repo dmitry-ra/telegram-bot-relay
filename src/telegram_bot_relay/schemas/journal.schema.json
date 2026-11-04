@@ -35,7 +35,9 @@
         "gateway_accepted",
         "operation_requested",
         "operation_artifacts",
-        "operation_completed"
+        "operation_completed",
+        "inspection_requested",
+        "inspection_completed"
       ],
       "title": "Type",
       "type": "string"

@@ -17,6 +17,19 @@ Previews collapse whitespace and are limited to 160 characters; the receiver
 may shorten them further. A voice preview is not a transcript. These labels
 never replace the full original content or prove that a file was downloaded.
 
+Reaction previews show the target message ID and Set/Clear emoji changes.
+Custom reaction previews use the base emoji and set name when Telegram supplies
+them, for example `Set <emoji> (custom, ExamplePack)`. Without metadata they
+retain the custom emoji ID. Full content may include `reaction_metadata` beside
+the original update and downloads, containing lookup status, full sticker
+metadata, missing IDs and an error class. Original reaction IDs remain the
+identity; different custom images can have the same base emoji. Metadata is not
+a visual interpretation or an instruction. A set name is not an individual
+emoji's descriptive title. Automatic enrichment does not download thumbnails.
+Read message_reaction.old_reaction and new_reaction for the original values.
+Unchanged means no set difference; Updated means a delta could not be safely
+summarized. Reactions are events, not new text commands or requests for a reply.
+
 Replies start with a reply-arrow marker, the original message ID when available,
 and a short context excerpt. A selected quote takes precedence over parent text,
 caption or media label. Replies and forwards are distinct and may occur together.

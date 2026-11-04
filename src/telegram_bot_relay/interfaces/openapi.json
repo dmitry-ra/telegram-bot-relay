@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "Telegram Bot Relay",
-    "version": "0.3.0"
+    "version": "0.4.0"
   },
   "security": [
     {
@@ -10,6 +10,69 @@
     }
   ],
   "paths": {
+    "/v1/custom-emoji": {
+      "post": {
+        "operationId": "inspectCustomEmoji",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "custom_emoji_ids": {
+                    "items": {
+                      "maxLength": 64,
+                      "minLength": 1,
+                      "pattern": "^[0-9]+$",
+                      "type": "string"
+                    },
+                    "maxItems": 200,
+                    "minItems": 1,
+                    "title": "Custom Emoji Ids",
+                    "type": "array"
+                  },
+                  "download_thumbnail": {
+                    "default": false,
+                    "title": "Download Thumbnail",
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "custom_emoji_ids"
+                ],
+                "title": "InspectCustomEmoji",
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Read-only inspection; inspect status and missing IDs",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Inspection"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid inspection request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Invalid origin"
+          },
+          "413": {
+            "description": "Request too large"
+          }
+        }
+      }
+    },
     "/v1/operations": {
       "post": {
         "operationId": "execute",
@@ -462,6 +525,58 @@
           "status"
         ],
         "title": "Outcome",
+        "type": "object"
+      },
+      "Inspection": {
+        "additionalProperties": false,
+        "properties": {
+          "inspection_id": {
+            "title": "Inspection Id",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "ok",
+              "failed"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "stickers": {
+            "items": {
+              "additionalProperties": {
+                "$ref": "#/components/schemas/JsonValue"
+              },
+              "type": "object"
+            },
+            "title": "Stickers",
+            "type": "array"
+          },
+          "missing_ids": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Missing Ids",
+            "type": "array"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Error"
+          }
+        },
+        "required": [
+          "inspection_id",
+          "status"
+        ],
+        "title": "Inspection",
         "type": "object"
       }
     },
