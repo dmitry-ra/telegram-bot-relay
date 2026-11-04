@@ -42,7 +42,9 @@ uv run --locked python tools/render_demo.py
 The renderer records an 86x27 terminal, removes capture metadata other than the
 dimensions, neutral title and TERM, and trims only the leading startup idle time.
 The [sanitized recording](assets/relay-demo.cast) retains actual output and event
-timing. agg renders a 954px-wide GIF; FFmpeg creates its static final frame.
+timing. The checked-in GIF lasts about 18 seconds; the recording runs about
+19 seconds through process exit. The renderer uses a four-second final-frame
+hold rather than equating the exit event with a visible frame. agg renders a 954px-wide GIF; FFmpeg creates its static final frame.
 To create an additional contact sheet outside the repository, pass
 `--review-dir /absolute/review-directory`.
 
