@@ -106,12 +106,15 @@ embedded instance. Copy Gateway's `examples/gateway.toml` and set:
 name = "work"
 thread = "REPLACE_WITH_YOUR_SESSION_UUID"
 batching = true
+interactive = true
 ```
 
-This configuration batches pending events and waits until the conversation is
-ready. Batching and active-turn delivery are separate policies. For an
-interactive steering policy, use a Gateway version that explicitly supports it
-and opt in per target; do not assume that batching enables steering.
+Use Message Gateway 0.6.0 or later for this interactive configuration. Incoming
+messages steer an active Codex turn and start a turn when the conversation is
+not active. Batching is independent: set `batching = false` to submit each
+message separately, or keep it enabled to combine pending messages. Event
+consumers that should wait for the conversation to finish can omit
+`interactive` or set it to false.
 
 From the Gateway checkout, set `MESSAGE_GATEWAY_TOKEN` securely to the contents
 of `gateway-api.token` and run:

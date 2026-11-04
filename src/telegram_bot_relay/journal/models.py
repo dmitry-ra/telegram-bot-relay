@@ -24,5 +24,7 @@ class Record(StrictModel):
         "operation_requested",
         "operation_artifacts",
         "operation_completed",
+        "inspection_requested",
+        "inspection_completed",
     ]
     data: dict[str, JsonValue]

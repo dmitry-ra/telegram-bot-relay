@@ -2,6 +2,7 @@
 
 import asyncio
 import fcntl
+import json
 import logging
 from collections import deque
 from datetime import UTC, datetime
@@ -14,9 +15,11 @@ from aiogram.exceptions import TelegramConflictError, TelegramNetworkError, Tele
 from pydantic import JsonValue
 
 from telegram_bot_relay.application.access import authorize
+from telegram_bot_relay.application.custom_emoji import prepare_reaction_metadata
 from telegram_bot_relay.application.models import SendMessage
 from telegram_bot_relay.application.operations import Operations
 from telegram_bot_relay.config import Config, secret
+from telegram_bot_relay.journal.models import Record
 from telegram_bot_relay.journal.writer import Journal
 from telegram_bot_relay.telegram.attachments import prepare
 from telegram_bot_relay.telegram.client import Client
@@ -24,6 +27,11 @@ from telegram_bot_relay.telegram.denied import denial_notifications
 from telegram_bot_relay.telegram.preview import format_preview
 
 logger = logging.getLogger(__name__)
+GATEWAY_CONTENT_BYTES = 65536
+
+
+def content_size(value: dict[str, JsonValue]) -> int:
+    return len(json.dumps(value, ensure_ascii=False, allow_nan=False).encode("utf-8"))
 
 
 class GatewayResponseError(ValueError):
@@ -112,6 +120,7 @@ class Service:
                 self.config.attachments,
                 allowed,
             )
+            reaction_metadata = await prepare_reaction_metadata(original, self.client, allowed)
             self.journal.append(
                 "message_prepared",
                 {
@@ -119,6 +128,7 @@ class Service:
                     "source_period": record.period,
                     "access": access,
                     "attachments": list(assets),
+                    "reaction_metadata": reaction_metadata,
                 },
             )
             self.prepared = record.seq
@@ -166,6 +176,8 @@ class Service:
             )
             assert isinstance(event, dict)
             sender = event.get("from", {})
+            if not sender and "old_reaction" in event and "new_reaction" in event:
+                sender = event.get("user", {})
             sender = sender if isinstance(sender, dict) else {}
             downloads: list[JsonValue] = []
             assets = prepared.data["attachments"]
@@ -177,16 +189,19 @@ class Service:
                     item["path"] = str(self.journal.root / source.period / str(item["path"]))
                 downloads.append(item)
             sent_at = event.get("date")
+            metadata = prepared.data.get("reaction_metadata", {})
+            metadata = metadata if isinstance(metadata, dict) else {}
+            content = self._gateway_content(original, downloads, prepared, metadata)
             message = {
                 "channel": "telegram",
-                "content": {**original, "downloads": downloads},
+                "content": content,
                 "sender": str(
                     sender.get("username")
                     or sender.get("first_name")
                     or sender.get("id")
                     or "telegram"
                 ),
-                "preview": format_preview(event),
+                "preview": format_preview(event, metadata),
                 "sent_at": (
                     datetime.fromtimestamp(sent_at, UTC).isoformat()
                     if isinstance(sent_at, int) and not isinstance(sent_at, bool)
@@ -227,6 +242,31 @@ class Service:
             self.gateway_cursor = prepared.seq
             return True
         return False
+
+    def _gateway_content(
+        self,
+        original: dict[str, JsonValue],
+        downloads: list[JsonValue],
+        prepared: Record,
+        metadata: dict[str, JsonValue],
+    ) -> dict[str, JsonValue]:
+        content: dict[str, JsonValue] = {**original, "downloads": downloads}
+        if not metadata:
+            return content
+        enriched: dict[str, JsonValue] = {**content, "reaction_metadata": metadata}
+        if content_size(content) > GATEWAY_CONTENT_BYTES:
+            return content
+        if content_size(enriched) <= GATEWAY_CONTENT_BYTES:
+            return enriched
+        reference: dict[str, JsonValue] = {
+            **content,
+            "reaction_metadata": {
+                "status": "referenced",
+                "journal_path": str(self.journal.root / prepared.period / "events.jsonl"),
+                "record_seq": prepared.seq,
+            },
+        }
+        return reference if content_size(reference) <= GATEWAY_CONTENT_BYTES else content
 
     async def poll(self) -> None:
         while True:
