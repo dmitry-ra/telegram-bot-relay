@@ -8,7 +8,7 @@ from aiogram.exceptions import TelegramAPIError
 from pydantic import Field, JsonValue
 
 from telegram_bot_relay.config import Config, StrictModel
-from telegram_bot_relay.journal.writer import Journal, sync_directory
+from telegram_bot_relay.journal.writer import Journal, private_directory, sync_directory
 from telegram_bot_relay.telegram.client import Client
 
 EmojiId = Annotated[str, Field(pattern=r"^[0-9]+$", min_length=1, max_length=64)]
@@ -112,15 +112,21 @@ async def inspect_custom_emoji(
                 if not config.attachments.download:
                     download = {"status": "disabled"}
                 elif isinstance(file_id, str) and file_id:
-                    folder = journal.root / record.period / "inspections" / inspection_id
+                    directory = journal.root / record.period / "inspections"
+                    folder = directory / inspection_id
                     path = folder / (str(len(stickers)) + ".webp")
+                    download_started = False
                     try:
                         if remaining_bytes <= 0:
                             raise ValueError("Inspection thumbnail byte budget exhausted")
                         if asyncio.get_running_loop().time() >= deadline:
                             raise TimeoutError("Inspection time budget exhausted")
-                        folder.mkdir(parents=True, exist_ok=True, mode=0o700)
+                        directory.mkdir(exist_ok=True, mode=0o700)
+                        private_directory(directory)
+                        folder.mkdir(exist_ok=True, mode=0o700)
+                        private_directory(folder)
                         async with asyncio.timeout_at(deadline):
+                            download_started = True
                             await client.download(
                                 file_id, path, remaining_bytes, config.attachments.timeout
                             )
@@ -132,10 +138,11 @@ async def inspect_custom_emoji(
                         sync_directory(folder)
                         download = {"status": "saved", "path": str(path)}
                     except (TelegramAPIError, TimeoutError, ValueError, OSError) as error:
-                        try:
-                            path.unlink(missing_ok=True)
-                        except OSError:
-                            remaining_bytes = 0
+                        if download_started:
+                            try:
+                                path.unlink(missing_ok=True)
+                            except OSError:
+                                remaining_bytes = 0
                         download = {"status": "failed", "error": type(error).__name__}
                 sticker["thumbnail_download"] = download
             stickers.append(sticker)

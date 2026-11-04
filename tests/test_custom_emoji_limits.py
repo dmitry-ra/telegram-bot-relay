@@ -2,8 +2,10 @@
 
 import asyncio
 from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import patch
 
+import pytest
 from pydantic import JsonValue
 
 from telegram_bot_relay.application.custom_emoji import InspectCustomEmoji, inspect_custom_emoji
@@ -127,6 +129,50 @@ def test_metadata_lookup_has_its_own_short_timeout(tmp_path: Path) -> None:
             )
         assert result.status == "failed" and result.error == "TimeoutError"
         assert not client.downloaded
+        assert list(journal.records())[-1].type == "inspection_completed"
+        journal.close()
+
+    asyncio.run(run())
+
+
+@pytest.mark.parametrize("kind", ["public_parent", "symlink_parent", "public_leaf", "symlink_leaf"])
+def test_inspection_rejects_unsafe_existing_parent(tmp_path: Path, kind: str) -> None:
+    async def run() -> None:
+        config = configuration(tmp_path)
+        journal = Journal(Path(config.data_dir))
+        directory = journal.root / journal.period / "inspections"
+        outside = tmp_path / "outside"
+        outside.mkdir(mode=0o700)
+        identity = "a" * 32
+        unsafe = directory
+        if kind.endswith("leaf"):
+            directory.mkdir(mode=0o700)
+            unsafe = directory / identity
+        if kind.startswith("public"):
+            unsafe.mkdir()
+            unsafe.chmod(0o755)
+        else:
+            unsafe.symlink_to(outside, target_is_directory=True)
+        client = ThumbnailClient()
+        with patch(
+            "telegram_bot_relay.application.custom_emoji.uuid4",
+            return_value=SimpleNamespace(hex=identity),
+        ):
+            result = await inspect_custom_emoji(
+                InspectCustomEmoji(custom_emoji_ids=["1", "2"], download_thumbnail=True),
+                config,
+                journal,
+                client,
+                "test",
+            )
+        assert result.status == "ok" and len(result.stickers) == 2
+        assert not client.downloaded
+        assert not list(outside.iterdir())
+        assert not list(unsafe.iterdir())
+        assert all(
+            item["thumbnail_download"] == {"status": "failed", "error": "ValueError"}
+            for item in result.stickers
+        )
         assert list(journal.records())[-1].type == "inspection_completed"
         journal.close()
 

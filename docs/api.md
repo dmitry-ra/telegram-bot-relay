@@ -42,7 +42,9 @@ and POST `/v1/custom-emoji`, sharing the same implementation and authentication:
 The result reports `ok` or `failed`, sticker metadata and `missing_ids`.
 Optional thumbnail downloads honor the attachment download policy and report
 their status and local archive path. A thumbnail failure preserves available
-metadata. Inspection requests/results are journaled separately from outgoing
+metadata. Existing inspection archive directories must be private and must not
+be symlinks; unsafe directories fail thumbnail downloads while retaining metadata.
+Inspection requests/results are journaled separately from outgoing
 operations; inspection never sends a message or changes a reaction.
 Inspection can write audit records and thumbnail files, so its MCP annotation is
 non-read-only and non-destructive. Metadata lookup is bounded to three seconds
