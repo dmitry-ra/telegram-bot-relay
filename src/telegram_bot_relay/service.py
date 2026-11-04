@@ -14,6 +14,7 @@ from aiogram.exceptions import TelegramConflictError, TelegramNetworkError, Tele
 from pydantic import JsonValue
 
 from telegram_bot_relay.application.access import authorize
+from telegram_bot_relay.application.custom_emoji import prepare_reaction_metadata
 from telegram_bot_relay.application.models import SendMessage
 from telegram_bot_relay.application.operations import Operations
 from telegram_bot_relay.config import Config, secret
@@ -112,6 +113,7 @@ class Service:
                 self.config.attachments,
                 allowed,
             )
+            reaction_metadata = await prepare_reaction_metadata(original, self.client, allowed)
             self.journal.append(
                 "message_prepared",
                 {
@@ -119,6 +121,7 @@ class Service:
                     "source_period": record.period,
                     "access": access,
                     "attachments": list(assets),
+                    "reaction_metadata": reaction_metadata,
                 },
             )
             self.prepared = record.seq
@@ -166,6 +169,8 @@ class Service:
             )
             assert isinstance(event, dict)
             sender = event.get("from", {})
+            if not sender and "old_reaction" in event and "new_reaction" in event:
+                sender = event.get("user", {})
             sender = sender if isinstance(sender, dict) else {}
             downloads: list[JsonValue] = []
             assets = prepared.data["attachments"]
@@ -177,16 +182,21 @@ class Service:
                     item["path"] = str(self.journal.root / source.period / str(item["path"]))
                 downloads.append(item)
             sent_at = event.get("date")
+            metadata = prepared.data.get("reaction_metadata", {})
+            metadata = metadata if isinstance(metadata, dict) else {}
+            content: dict[str, JsonValue] = {**original, "downloads": downloads}
+            if metadata:
+                content["reaction_metadata"] = metadata
             message = {
                 "channel": "telegram",
-                "content": {**original, "downloads": downloads},
+                "content": content,
                 "sender": str(
                     sender.get("username")
                     or sender.get("first_name")
                     or sender.get("id")
                     or "telegram"
                 ),
-                "preview": format_preview(event),
+                "preview": format_preview(event, metadata),
                 "sent_at": (
                     datetime.fromtimestamp(sent_at, UTC).isoformat()
                     if isinstance(sent_at, int) and not isinstance(sent_at, bool)

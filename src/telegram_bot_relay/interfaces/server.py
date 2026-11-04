@@ -6,6 +6,7 @@ from urllib.parse import urlsplit
 
 from mcp.server.mcpserver import MCPServer
 from mcp.server.transport_security import TransportSecuritySettings
+from mcp.types import ToolAnnotations
 from pydantic import ValidationError
 from starlette.applications import Starlette
 from starlette.requests import Request
@@ -13,6 +14,13 @@ from starlette.responses import JSONResponse
 from starlette.routing import Route
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
+from telegram_bot_relay.application.custom_emoji import (
+    InspectCustomEmoji,
+    Inspection,
+)
+from telegram_bot_relay.application.custom_emoji import (
+    inspect_custom_emoji as inspect_emoji,
+)
 from telegram_bot_relay.application.models import (
     Callback,
     EditMessage,
@@ -76,6 +84,13 @@ class Security:
 def create_app(operations: Operations, token: str) -> ASGIApp:
     mcp: MCPServer[Any] = MCPServer("telegram-bot-relay")
 
+    @mcp.tool(annotations=ToolAnnotations(read_only_hint=True, destructive_hint=False))
+    async def inspect_custom_emoji(request: InspectCustomEmoji) -> Inspection:
+        """Read custom emoji metadata and optionally download thumbnails; sends no messages."""
+        return await inspect_emoji(
+            request, operations.config, operations.journal, operations.client, "mcp"
+        )
+
     @mcp.tool()
     async def send_message(request: SendMessage) -> Outcome:
         """Send text to an allowed Telegram destination, optionally replying."""
@@ -124,6 +139,16 @@ def create_app(operations: Operations, token: str) -> ASGIApp:
     async def health(request: Request) -> JSONResponse:
         return JSONResponse({"status": "ready", "journal_seq": operations.journal.seq})
 
+    async def inspect(request: Request) -> JSONResponse:
+        try:
+            query = InspectCustomEmoji.model_validate_json(await request.body())
+        except ValidationError:
+            return JSONResponse({"error": "invalid_inspection"}, 400)
+        result = await inspect_emoji(
+            query, operations.config, operations.journal, operations.client, "http"
+        )
+        return JSONResponse(result.model_dump(mode="json"))
+
     async def specification(request: Request) -> JSONResponse:
         from telegram_bot_relay.interfaces.specification import openapi
 
@@ -140,6 +165,7 @@ def create_app(operations: Operations, token: str) -> ASGIApp:
     app.router.routes.extend(
         [
             Route("/v1/operations", execute, methods=["POST"]),
+            Route("/v1/custom-emoji", inspect, methods=["POST"]),
             Route("/healthz", health),
             Route("/openapi.json", specification),
         ]
