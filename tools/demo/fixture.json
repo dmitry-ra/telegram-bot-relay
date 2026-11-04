@@ -1,0 +1,10 @@
+{
+  "update_id": 1,
+  "message": {
+    "message_id": 41,
+    "date": 1700000000,
+    "from": {"id": 42, "is_bot": false, "first_name": "Casey"},
+    "chat": {"id": 42, "type": "private"},
+    "text": "Send the release checklist."
+  }
+}

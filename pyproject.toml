@@ -29,7 +29,7 @@ packages = ["src/telegram_bot_relay"]
 "skills" = "telegram_bot_relay/skills"
 
 [tool.hatch.build.targets.sdist]
-include = ["/src", "/tests", "/tools", "/skills", "/examples", "/docs", "/systemd", "/AGENTS.md", "/.python-version"]
+include = ["/src", "/tests", "/tools", "/skills", "/.agents", "/examples", "/docs", "/systemd", "/AGENTS.md", "/.python-version"]
 
 [dependency-groups]
 dev = [

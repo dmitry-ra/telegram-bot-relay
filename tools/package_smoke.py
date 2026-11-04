@@ -4,6 +4,7 @@ import subprocess
 import tarfile
 import tempfile
 import tomllib
+import zipfile
 from pathlib import Path
 
 
@@ -15,7 +16,20 @@ def main() -> None:
         root / "dist" / f"telegram_bot_relay-{version}.tar.gz",
     ]
     with tarfile.open(artifacts[1]) as archive:
-        assert any(n.endswith("skills/telegram-message/SKILL.md") for n in archive.getnames())
+        names = archive.getnames()
+        for required in [
+            "skills/telegram-message/SKILL.md",
+            ".agents/skills/operate-telegram-relay/SKILL.md",
+            "docs/assets/relay-demo.gif",
+            "docs/assets/relay-demo.png",
+            "tools/demo/fixture.json",
+            "LICENSE",
+        ]:
+            assert any(name.endswith("/" + required) for name in names), required
+    with zipfile.ZipFile(artifacts[0]) as archive:
+        names = archive.namelist()
+        assert any(name.endswith(".dist-info/licenses/LICENSE") for name in names)
+        assert not any(name.startswith(("docs/", ".agents/", "tools/")) for name in names)
     for artifact in artifacts:
         with tempfile.TemporaryDirectory(prefix="relay-package-") as directory:
             work = Path(directory)
