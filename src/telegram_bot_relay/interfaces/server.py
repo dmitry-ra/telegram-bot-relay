@@ -26,6 +26,7 @@ from telegram_bot_relay.application.models import (
     EditMessage,
     Outcome,
     Reaction,
+    ReplyMessage,
     SendMedia,
     SendMessage,
     Transfer,
@@ -105,10 +106,8 @@ def create_app(operations: Operations, token: str) -> ASGIApp:
         return await operations.execute(request, "mcp")
 
     @mcp.tool()
-    async def reply(request: SendMessage) -> Outcome:
+    async def reply(request: ReplyMessage) -> Outcome:
         """Reply to an incoming message using its chat_id and reply_to."""
-        if request.reply_to is None:
-            raise ValueError("reply_to is required")
         return await operations.execute(request, "mcp")
 
     @mcp.tool()

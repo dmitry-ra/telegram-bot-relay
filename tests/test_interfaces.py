@@ -70,15 +70,27 @@ def test_real_http_and_mcp_share_operations_and_audit(tmp_path: Path) -> None:
                     async with ClientSession(read, write) as session:
                         await session.initialize()
                         tools = await session.list_tools()
-                        assert "reply" in {t.name for t in tools.tools}
+                        reply_schema = next(
+                            t for t in tools.tools if t.name == "reply"
+                        ).input_schema
+                        request_schema = reply_schema["$defs"]["ReplyMessage"]
+                        assert "reply_to" in request_schema["required"]
+                        assert request_schema["properties"]["reply_to"]["type"] == "integer"
+                        Draft202012Validator(reply_schema).validate(
+                            {"request": {"chat_id": 101, "text": "MCP", "reply_to": 1}}
+                        )
                         result = await session.call_tool(
                             "reply", {"request": {"chat_id": 101, "text": "MCP", "reply_to": 1}}
                         )
                         assert not result.is_error
-                        invalid = await session.call_tool(
-                            "reply", {"request": {"chat_id": 101, "text": "missing reply"}}
-                        )
-                        assert invalid.is_error
+                        for fields in ({}, {"reply_to": None}):
+                            before_seq, before_sent = journal.seq, len(client.sent)
+                            invalid = await session.call_tool(
+                                "reply", {"request": {"chat_id": 101, "text": "invalid", **fields}}
+                            )
+                            assert invalid.is_error
+                            assert journal.seq == before_seq
+                            assert len(client.sent) == before_sent
                         denied = await session.call_tool(
                             "send_message", {"request": {"chat_id": 202, "text": "denied"}}
                         )

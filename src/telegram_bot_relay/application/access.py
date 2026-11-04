@@ -3,6 +3,7 @@
 from pydantic import JsonValue
 
 from telegram_bot_relay.config import Access, StrictModel
+from telegram_bot_relay.telegram.events import event_and_actor
 
 
 class Decision(StrictModel):
@@ -11,15 +12,12 @@ class Decision(StrictModel):
 
 
 def authorize(update: dict[str, JsonValue], policy: Access) -> Decision:
-    event = next((v for k, v in update.items() if k != "update_id" and isinstance(v, dict)), {})
-    if not isinstance(event, dict):
-        return Decision(allowed=False, reason="missing_event")
-    sender = event.get("from") or event.get("user")
+    event, sender = event_and_actor(update)
     chat = event.get("chat")
     nested = event.get("message")
     if not isinstance(chat, dict) and isinstance(nested, dict):
         chat = nested.get("chat")
-    if not isinstance(sender, dict) or type(sender.get("id")) is not int:
+    if type(sender.get("id")) is not int:
         return Decision(allowed=False, reason="missing_sender")
     if event.get("sender_chat"):
         return Decision(allowed=False, reason="anonymous_sender")
