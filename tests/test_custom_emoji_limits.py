@@ -9,6 +9,7 @@ import pytest
 from pydantic import JsonValue
 
 from telegram_bot_relay.application.custom_emoji import InspectCustomEmoji, inspect_custom_emoji
+from telegram_bot_relay.journal import writer
 from telegram_bot_relay.journal.writer import Journal
 from tests.helpers import FakeClient, configuration
 
@@ -173,6 +174,41 @@ def test_inspection_rejects_unsafe_existing_parent(tmp_path: Path, kind: str) ->
             item["thumbnail_download"] == {"status": "failed", "error": "ValueError"}
             for item in result.stickers
         )
+        assert list(journal.records())[-1].type == "inspection_completed"
+        journal.close()
+
+    asyncio.run(run())
+
+
+def test_inspection_parent_entries_are_synced_before_download(tmp_path: Path) -> None:
+    async def run() -> None:
+        config = configuration(tmp_path)
+        journal = Journal(Path(config.data_dir))
+        period = journal.root / journal.period
+        synced: list[Path] = []
+        real_sync = writer.sync_directory
+
+        def sync(path: Path) -> None:
+            real_sync(path)
+            synced.append(path)
+
+        class Client(ThumbnailClient):
+            async def download(self, file_id: str, path: Path, limit: int, timeout: int) -> None:
+                assert period in synced
+                assert period / "inspections" in synced
+                await super().download(file_id, path, limit, timeout)
+
+        with patch.object(writer, "sync_directory", side_effect=sync):
+            result = await inspect_custom_emoji(
+                InspectCustomEmoji(custom_emoji_ids=["1"], download_thumbnail=True),
+                config,
+                journal,
+                Client(),
+                "test",
+            )
+        assert result.status == "ok"
+        download = result.stickers[0]["thumbnail_download"]
+        assert isinstance(download, dict) and download["status"] == "saved"
         assert list(journal.records())[-1].type == "inspection_completed"
         journal.close()
 
