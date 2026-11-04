@@ -92,3 +92,7 @@ repeated. This change adds no separate delivery queue or profile lookup.
 Outgoing media snapshots keep the original file basename inside a unique
 operation directory. Telegram receives the readable original filename, while
 separate operations and album items cannot overwrite one another.
+
+Gateway URLs must be HTTP(S) base URLs without userinfo, query or fragment
+(including empty delimiters). Use gateway.token_file for authentication. Invalid
+URLs are rejected during configuration loading before journal or network use.

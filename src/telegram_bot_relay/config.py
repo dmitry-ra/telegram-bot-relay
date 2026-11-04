@@ -2,10 +2,11 @@
 
 import tomllib
 from pathlib import Path
+from urllib.parse import urlsplit
 from zoneinfo import ZoneInfo
 
 from cronsim import CronSim
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 
 class StrictModel(BaseModel):
@@ -33,6 +34,25 @@ class Gateway(StrictModel):
     target: str = Field(min_length=1)
     start: str = Field(pattern="^(oldest|latest)$")
     token_file: str | None = None
+
+    @field_validator("url")
+    @classmethod
+    def validate_base_url(cls, value: str) -> str:
+        parsed = urlsplit(value)
+        if (
+            parsed.scheme not in ("http", "https")
+            or not parsed.hostname
+            or parsed.username is not None
+            or parsed.password is not None
+            or "?" in value
+            or "#" in value
+        ):
+            raise ValueError(
+                "Gateway requires an HTTP(S) base URL without userinfo, query or fragment"
+            )
+        # Accessing port also rejects malformed or out-of-range port values.
+        _ = parsed.port
+        return value
 
 
 class Config(StrictModel):
