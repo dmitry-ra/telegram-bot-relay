@@ -24,7 +24,10 @@ is never forwarded. Gateway's own queue remains in memory.
 
 REST/MCP requests are typed and share destination validation. Local outgoing
 files must resolve inside configured upload roots, are copied into the archive
-before sending, and have explicit media kind. Incoming downloads have bounded
+before sending, and have explicit media kind. Initial symlinks are resolved; the
+canonical file must remain under a configured root. Descriptor-based copying
+rejects symlink replacements in any canonical path component and enforces the
+regular-file type and byte limit on the opened file. Incoming downloads have bounded
 time and bytes, generated names and durable completion records. A file archive
 does not establish that its contents are safe or understood.
 

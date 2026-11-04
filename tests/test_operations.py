@@ -110,3 +110,42 @@ def test_upload_snapshot_and_transfer_policy(tmp_path: Path) -> None:
         journal.close()
 
     asyncio.run(run())
+
+
+@pytest.mark.parametrize(
+    ("groups", "allowed_chats", "status"),
+    [(False, [-202], "denied"), (True, [], "denied"), (True, [-202], "sent")],
+)
+def test_callback_authorizes_nested_group_context(
+    tmp_path: Path, groups: bool, allowed_chats: list[int], status: str
+) -> None:
+    async def run() -> None:
+        config = configuration(tmp_path)
+        config.access.groups = groups
+        config.access.allowed_chats = allowed_chats
+        config.access.outgoing_chats = [-202]
+        journal = Journal(Path(config.data_dir))
+        journal.append(
+            "message_received",
+            {
+                "original": {
+                    "callback_query": {
+                        "id": "group",
+                        "from": {"id": 101},
+                        "message": {
+                            "chat": {"id": -202, "type": "supergroup"},
+                            "sender_chat": {"id": -202},
+                        },
+                    }
+                }
+            },
+        )
+        client = FakeClient()
+        result = await Operations(config, journal, client).execute(
+            Callback(chat_id=-202, callback_query_id="group"), "http"
+        )
+        assert result.status == status
+        assert len(client.sent) == (1 if status == "sent" else 0)
+        journal.close()
+
+    asyncio.run(run())

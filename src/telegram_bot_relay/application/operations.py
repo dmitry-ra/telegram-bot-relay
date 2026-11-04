@@ -1,7 +1,8 @@
 """One implementation of outbound policy, snapshots, audit and Telegram calls."""
 
 import os
-import shutil
+import stat
+from contextlib import ExitStack, suppress
 from pathlib import Path
 from uuid import uuid4
 
@@ -13,6 +14,43 @@ from telegram_bot_relay.application.models import Callback, Operation, Outcome, 
 from telegram_bot_relay.config import Config
 from telegram_bot_relay.journal.writer import Journal, sync_directory
 from telegram_bot_relay.telegram.client import Client
+
+
+def copy_upload(source: Path, root: Path, destination: Path, limit: int) -> None:
+    """Copy a regular file without reopening validated pathnames."""
+    created = False
+    try:
+        with ExitStack() as opened:
+            directory_flags = os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW
+            directory = os.open(root.anchor, directory_flags)
+            opened.callback(os.close, directory)
+            parts = source.relative_to(root.anchor).parts
+            for part in parts[:-1]:
+                directory = os.open(part, directory_flags, dir_fd=directory)
+                opened.callback(os.close, directory)
+            descriptor = os.open(
+                parts[-1], os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK, dir_fd=directory
+            )
+            opened.callback(os.close, descriptor)
+            attributes = os.fstat(descriptor)
+            if not stat.S_ISREG(attributes.st_mode) or attributes.st_size > limit:
+                raise ValueError("Upload size or file type is not allowed")
+            with os.fdopen(descriptor, "rb", closefd=False) as source_file:
+                with destination.open("xb") as output:
+                    created = True
+                    remaining = limit
+                    while chunk := source_file.read(min(65536, remaining + 1)):
+                        if len(chunk) > remaining:
+                            raise ValueError("Upload size limit")
+                        output.write(chunk)
+                        remaining -= len(chunk)
+                    output.flush()
+                    os.fsync(output.fileno())
+    except BaseException:
+        if created:
+            with suppress(OSError):
+                destination.unlink(missing_ok=True)
+        raise
 
 
 class Operations:
@@ -102,18 +140,15 @@ class Operations:
                 continue
             source = Path(media.path).resolve(strict=True)
             roots = [Path(p).expanduser().resolve() for p in self.config.attachments.upload_roots]
-            if not any(source.is_relative_to(root) for root in roots):
+            root = next((root for root in roots if source.is_relative_to(root)), None)
+            if root is None:
                 raise ValueError("Upload path outside allowed roots")
-            if not source.is_file() or source.stat().st_size > self.config.attachments.max_bytes:
-                raise ValueError("Upload size limit")
             directory = self.journal.root / period / "attachments"
             directory.mkdir(exist_ok=True, mode=0o700)
             snapshot = directory / f"out-{operation_id}-{index}"
             snapshot.mkdir(mode=0o700)
             destination = snapshot / source.name
-            shutil.copyfile(source, destination)
-            with destination.open("rb") as stream:
-                os.fsync(stream.fileno())
+            copy_upload(source, root, destination, self.config.attachments.max_bytes)
             sync_directory(snapshot)
             sync_directory(directory)
             media.path = str(destination)

@@ -4,10 +4,10 @@ For a complete terminal-and-Telegram receiver setup with your own bot, see
 [Connect a bot to Codex](codex.md). It includes both delivery directions,
 credentials, skills, conversation binding and a second-bot checklist.
 
-Install pinned uv0.13.6; uv sync --locked --group dev creates the pinned
+Install pinned uv 0.13.6; uv sync --locked --group dev creates the pinned
 development Python3.14.10 environment. Python3.12-3.14 is tested by CI.
 Copy examples/config.toml to a private directory, set real paths and numeric
-allowlists, and create separate token files with permissions0600. Token files
+allowlists, and create separate token files with permissions 0600. Token files
 contain only the value, not an environment assignment.
 
 Start with uv run --locked telegram-bot-relay --config /absolute/config.toml.

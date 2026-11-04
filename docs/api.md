@@ -14,9 +14,9 @@ HTTP availability and journal position (not Telegram reachability).
 {"method":"send_message","chat_id":123456789,"text":"Hello","reply_to":42}
 ```
 
-HTTP200 carries an operation outcome: sent, denied, failed or uncertain. Inspect
-status, result and error; do not equate HTTP200 with Telegram delivery.
-HTTP400 is schema failure,401 authentication,403 origin/host,413 body limit.
+HTTP 200 carries an operation outcome: sent, denied, failed or uncertain. Inspect
+status, result and error; do not equate HTTP 200 with Telegram delivery.
+HTTP 400 is schema failure, 401 authentication, 403 origin/host, 413 body limit.
 
 Connect an MCP client to http://127.0.0.1:10881/mcp with the same Authorization
 header. No subprocess or separate poller is launched. Tools accept a typed
@@ -32,7 +32,7 @@ request object and return the same Outcome model:
 | set_reaction | Set one emoji reaction |
 | answer_callback | Answer a button callback |
 
-Files use exactly one local path or Telegram file_id. Albums contain2-10
+Files use exactly one local path or Telegram file_id. Albums contain 2-10
 photos/videos, only documents, or only audio. Document mode preserves bytes;
 photo mode delegates Telegram's normal image processing. Transfer operations
 require both source and destination chats to be allowed.

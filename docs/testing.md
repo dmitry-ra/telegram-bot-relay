@@ -3,7 +3,7 @@
 Normal tests never contact Telegram. Use uv run --locked python tools/check.py
 before a code commit; CI repeats it on Python3.12,3.13,3.14. Black, Ruff,
 strict mypy, compileall, schema drift and ASCII checks run before pytest.
-Branch coverage must be at least90%; coverage alone is not acceptance.
+Branch coverage must be at least 90%; coverage alone is not acceptance.
 
 | Boundary | Verification |
 | --- | --- |
