@@ -151,3 +151,27 @@ def test_inbound_timeout_after_successful_probes_is_nonfatal(
     output = capsys.readouterr().out
     assert "REAL_BOT_READY" in output and "No control incoming" in output
     assert runtime["client_closed"] and runtime["server_closed"]
+
+
+def test_trial_rejects_public_evidence_directory_before_network(
+    tmp_path: Path, runtime: dict[str, Any]
+) -> None:
+    directory = tmp_path / "public"
+    directory.mkdir(mode=0o755)
+    directory.chmod(0o755)
+    with pytest.raises(ValueError, match="Evidence directory"):
+        asyncio.run(live_trial.trial(configuration(tmp_path), 101, directory, 1))
+    assert not runtime.get("http_called")
+    assert not list(directory.iterdir())
+
+
+def test_evidence_files_are_private_and_public_existing_files_are_preserved(tmp_path: Path) -> None:
+    path = tmp_path / "report.json"
+    live_trial.write_evidence(path, b"private")
+    assert path.stat().st_mode & 0o077 == 0
+    live_trial.write_evidence(path, b"new")
+    assert path.read_bytes() == b"new"
+    path.chmod(0o644)
+    with pytest.raises(ValueError, match="Evidence files"):
+        live_trial.write_evidence(path, b"overwrite")
+    assert path.read_bytes() == b"new"

@@ -3,6 +3,7 @@
 import argparse
 import asyncio
 import json
+import os
 import struct
 import zlib
 from pathlib import Path
@@ -42,12 +43,23 @@ def sent_outcome(value: object) -> Outcome:
     return outcome
 
 
+def write_evidence(path: Path, data: bytes) -> None:
+    descriptor = os.open(path, os.O_CREAT | os.O_WRONLY | os.O_NOFOLLOW, 0o600)
+    with os.fdopen(descriptor, "wb") as stream:
+        if os.fstat(stream.fileno()).st_mode & 0o077:
+            raise ValueError("Evidence files must have private permissions")
+        stream.truncate(0)
+        stream.write(data)
+
+
 async def trial(config: Config, chat: int, directory: Path, seconds: int) -> None:
     directory.mkdir(parents=True, exist_ok=True, mode=0o700)
+    if directory.stat().st_mode & 0o077:
+        raise ValueError("Evidence directory must have private permissions")
     document = directory / "relay-document.txt"
-    document.write_text("RELAY_DOCUMENT_ORBIT_42\n")
+    write_evidence(document, b"RELAY_DOCUMENT_ORBIT_42\n")
     image = directory / "relay-image.png"
-    image.write_bytes(png())
+    write_evidence(image, png())
     config.attachments.upload_roots.append(str(directory.resolve()))
     journal = Journal(Path(config.data_dir), config.rotate, config.timezone)
     client = Client(secret(config.token_file))
@@ -152,8 +164,9 @@ async def trial(config: Config, chat: int, directory: Path, seconds: int) -> Non
             tasks[1].cancel()
         await asyncio.gather(*tasks, return_exceptions=True)
         await client.close()
-        (directory / "outcomes.json").write_text(
-            json.dumps(outcomes, indent=2, ensure_ascii=True) + "\n"
+        write_evidence(
+            directory / "outcomes.json",
+            (json.dumps(outcomes, indent=2, ensure_ascii=True) + "\n").encode(),
         )
         records = list(journal.records())
         report = {
@@ -162,8 +175,9 @@ async def trial(config: Config, chat: int, directory: Path, seconds: int) -> Non
             "operations": [r.data for r in records if r.type == "operation_completed"],
             "periods": len(list(journal.root.glob("*/events.jsonl"))),
         }
-        (directory / "report.json").write_text(
-            json.dumps(report, indent=2, ensure_ascii=True) + "\n"
+        write_evidence(
+            directory / "report.json",
+            (json.dumps(report, indent=2, ensure_ascii=True) + "\n").encode(),
         )
         print(
             json.dumps(

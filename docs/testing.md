@@ -30,7 +30,8 @@ invalidates the run. The default .venv remains the pinned development version.
 
 Live acceptance is explicit and outside CI. After checking the bot has no
 other receiver, run tools/live_trial.py with private config, an allowed chat,
-and a private evidence directory. It sends text through REST, then text,
+and a private evidence directory (0700). Existing public evidence paths are
+rejected, and generated artifacts use 0600 permissions. It sends text through REST, then text,
 document and image through real Streamable HTTP MCP. An optional incoming
 RELAY_INBOUND_CHECK message verifies polling and archival; use a minute cron
 schedule to exercise real directory rotation. Evidence is report.json and

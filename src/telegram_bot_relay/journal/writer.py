@@ -114,9 +114,18 @@ class Journal:
             target = last.data["next_events"]
             if not isinstance(target, str):
                 raise ValueError("Invalid rotation link")
-            new_path = (self.root / last.period / target).resolve()
-            if new_path.parent.parent != self.root:
+            parts = Path(target).parts
+            if (
+                len(parts) != 3
+                or parts[0] != ".."
+                or parts[2] != "events.jsonl"
+                or target != f"../{parts[1]}/events.jsonl"
+                or parts[1] <= last.period
+            ):
                 raise ValueError("Invalid rotation path")
+            new_path = self.root / parts[1] / "events.jsonl"
+            if new_path.parent.is_symlink() or new_path.is_symlink():
+                raise ValueError("Symlink rotation targets are not supported")
             self.period = new_path.parent.name
             new_path.parent.mkdir(exist_ok=True, mode=0o700)
             private_path(new_path.parent)

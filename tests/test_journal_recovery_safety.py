@@ -68,3 +68,32 @@ def test_recovery_backup_is_durable_idempotent_and_preserves_other_tails(
     }
     assert all(p.stat().st_mode & 0o077 == 0 for p in path.parent.glob("incomplete-tail-*.bin"))
     assert not list(path.parent.glob("incomplete-tail-*.tmp"))
+
+
+@pytest.mark.parametrize("target", ["basename", "current", "closed", "symlink"])
+def test_recovery_rejects_invalid_rotation_targets(tmp_path: Path, target: str) -> None:
+    journal = Journal(tmp_path)
+    first = journal.period
+    if target == "closed":
+        journal.rotate()
+    current = journal.period
+    next_name = "99999999999999999999-next"
+    if target == "symlink":
+        outside = tmp_path.parent / (tmp_path.name + "-outside")
+        outside.mkdir(mode=0o700)
+        (tmp_path / next_name).symlink_to(outside, target_is_directory=True)
+    destinations = {
+        "basename": f"../{next_name}/other.bin",
+        "current": f"../{current}/events.jsonl",
+        "closed": f"../{first}/events.jsonl",
+        "symlink": f"../{next_name}/events.jsonl",
+    }
+    journal._append("rotate", {"next_events": destinations[target]})
+    before = (tmp_path / current / "events.jsonl").read_bytes()
+    journal.close()
+    with pytest.raises(ValueError, match="rotation"):
+        Journal(tmp_path)
+    assert (tmp_path / current / "events.jsonl").read_bytes() == before
+    assert not (tmp_path / next_name / "other.bin").exists()
+    if target == "symlink":
+        assert not (outside / "events.jsonl").exists()
