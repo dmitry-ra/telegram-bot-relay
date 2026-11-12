@@ -23,6 +23,7 @@ from telegram_bot_relay.application.custom_emoji import (
 )
 from telegram_bot_relay.application.models import (
     Callback,
+    DeleteMessage,
     EditMessage,
     Outcome,
     Reaction,
@@ -123,6 +124,11 @@ def create_app(operations: Operations, token: str) -> ASGIApp:
     @mcp.tool()
     async def edit_message(request: EditMessage) -> Outcome:
         """Edit the text of a Telegram message."""
+        return await operations.execute(request, "mcp")
+
+    @mcp.tool(annotations=ToolAnnotations(read_only_hint=False, destructive_hint=True))
+    async def delete_message(request: DeleteMessage) -> Outcome:
+        """Delete one message in an allowed chat; Telegram permissions and time limits apply."""
         return await operations.execute(request, "mcp")
 
     @mcp.tool()

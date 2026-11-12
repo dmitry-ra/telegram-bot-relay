@@ -65,6 +65,12 @@ repeat uncertain sends: Telegram might already have delivered them. IDs returned
 by Telegram identify actual sent messages. Journal delivery acceptance alone is
 not evidence that a question was answered or an action completed.
 
+For an explicitly authorized deletion use delete_message with chat_id and the
+exact message_id. A successful deletion returns status sent and result true;
+it does not return a newly sent message. Telegram enforces deletion permissions
+and time limits. Do not retry uncertain deletions or infer that local archives
+were removed along with the Telegram message.
+
 HTTP requests and MCP tool calls share policy and produce operation_requested
 and operation_completed journal records. Denied source records remain archived;
 their presence never grants permission to reply or change access configuration.

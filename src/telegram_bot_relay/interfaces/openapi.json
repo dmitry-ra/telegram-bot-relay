@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "Telegram Bot Relay",
-    "version": "0.4.1"
+    "version": "0.5.0"
   },
   "security": [
     {
@@ -85,6 +85,7 @@
                   "mapping": {
                     "answer_callback": "#/components/schemas/Callback",
                     "copy_message": "#/components/schemas/Transfer",
+                    "delete_message": "#/components/schemas/DeleteMessage",
                     "edit_message": "#/components/schemas/EditMessage",
                     "forward_message": "#/components/schemas/Transfer",
                     "send_media": "#/components/schemas/SendMedia",
@@ -105,6 +106,9 @@
                   },
                   {
                     "$ref": "#/components/schemas/EditMessage"
+                  },
+                  {
+                    "$ref": "#/components/schemas/DeleteMessage"
                   },
                   {
                     "$ref": "#/components/schemas/Reaction"
@@ -176,6 +180,32 @@
           "callback_query_id"
         ],
         "title": "Callback",
+        "type": "object"
+      },
+      "DeleteMessage": {
+        "additionalProperties": false,
+        "properties": {
+          "chat_id": {
+            "title": "Chat Id",
+            "type": "integer"
+          },
+          "method": {
+            "const": "delete_message",
+            "default": "delete_message",
+            "title": "Method",
+            "type": "string"
+          },
+          "message_id": {
+            "exclusiveMinimum": 0,
+            "title": "Message Id",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "chat_id",
+          "message_id"
+        ],
+        "title": "DeleteMessage",
         "type": "object"
       },
       "EditMessage": {
