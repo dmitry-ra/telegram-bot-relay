@@ -10,6 +10,7 @@ from aiogram.client.telegram import TelegramAPIServer
 from aiogram.methods import (
     AnswerCallbackQuery,
     CopyMessage,
+    DeleteMessage,
     EditMessageText,
     ForwardMessage,
     SendAnimation,
@@ -129,6 +130,7 @@ class Client:
                 "forward_message": ForwardMessage,
                 "copy_message": CopyMessage,
                 "edit_message": EditMessageText,
+                "delete_message": DeleteMessage,
                 "set_reaction": SetMessageReaction,
                 "answer_callback": AnswerCallbackQuery,
             }

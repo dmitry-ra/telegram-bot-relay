@@ -70,6 +70,11 @@ class EditMessage(Address):
     parse_mode: Literal["HTML", "MarkdownV2"] | None = None
 
 
+class DeleteMessage(Address):
+    method: Literal["delete_message"] = "delete_message"
+    message_id: int = Field(gt=0)
+
+
 class Reaction(Address):
     method: Literal["set_reaction"] = "set_reaction"
     message_id: int
@@ -84,7 +89,7 @@ class Callback(StrictModel):
 
 
 Operation = Annotated[
-    SendMessage | SendMedia | Transfer | EditMessage | Reaction | Callback,
+    SendMessage | SendMedia | Transfer | EditMessage | DeleteMessage | Reaction | Callback,
     Field(discriminator="method"),
 ]
 operation_adapter: TypeAdapter[Operation] = TypeAdapter(Operation)

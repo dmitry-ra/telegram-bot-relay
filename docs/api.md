@@ -77,8 +77,32 @@ request object and return the same Outcome model:
 | send_media | Photo, document, voice, audio, video, round video, animation, sticker, album |
 | transfer_message | forward_message or copy_message between allowed chats |
 | edit_message | Edit text and formatting |
+| delete_message | Delete one message by positive message_id in an allowed chat |
 | set_reaction | Set one emoji reaction |
 | answer_callback | Answer a button callback |
+
+## Delete a message
+
+MCP `delete_message` accepts a typed request with `chat_id` and `message_id`.
+The equivalent HTTP operation is:
+
+```json
+{"method":"delete_message","chat_id":123456789,"message_id":42}
+```
+
+The message ID must be a positive integer. Numeric chat IDs use the existing
+`outgoing_chats` allowlist; negative group/channel IDs remain supported. Deletion
+uses the same durable request/result journal as other operations. Successful
+deletion returns `status: "sent"` and `result: true`. `sent` is the shared
+operation success label here, not a newly sent message.
+
+The MCP tool is marked destructive. Call it only for messages the operator has
+authorized removing. Telegram enforces message age and bot permissions; see
+[deleteMessage](https://core.telegram.org/bots/api#deletemessage). Most messages
+must be less than 48 hours old, and some service/dice messages have additional
+restrictions. A Telegram rejection returns `failed`; a network error or timeout
+returns `uncertain`. Do not automatically retry an uncertain deletion. The relay
+does not purge its archived updates or attachments when deleting a Telegram message.
 
 ## Custom emoji inspection
 
