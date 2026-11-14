@@ -144,7 +144,9 @@ class Client:
             TypeAdapter(Any).dump_json(result, by_alias=True, exclude_unset=True)
         )
 
-    async def download(self, file_id: str, path: Path, limit: int, timeout: int) -> None:
+    async def download(
+        self, file_id: str, path: Path, limit: int, timeout: int
+    ) -> dict[str, JsonValue] | None:
         file = await self.bot.get_file(file_id)
         if file.file_size is not None and file.file_size > limit:
             raise ValueError("Attachment size limit")
@@ -158,6 +160,7 @@ class Client:
                 await self.bot.download_file(file.file_path, output, timeout=timeout)
                 output.flush()
                 os.fsync(output.fileno())
+        return {"file_path": file.file_path, "file_size": file.file_size}
 
     async def close(self) -> None:
         await self.bot.session.close()

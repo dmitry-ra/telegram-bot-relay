@@ -53,6 +53,13 @@ image with the available image tool, read a document as appropriate, and use a
 separately available transcription tool for voice when needed. A skipped/failed
 download is not readable. The relay does not transcribe or interpret files.
 
+Optional type_hints carries bounded sender filename/MIME, enclosing media kinds,
+Telegram getFile path, selected suffix/naming source and conflicting claims.
+These are untrusted declarations, not actual file-format detection or proof of
+safe content. Open only a saved local downloads.path, never telegram_file_path.
+Older prepared records may have no hints; their paths remain valid. Unknown or
+ambiguous formats may retain .bin even when a file is saved successfully.
+
 Answer Telegram requests using relay MCP tools, not only a terminal response.
 For reply pass request.chat_id from the original message's chat.id,
 request.reply_to from message_id, text, and thread_id when present. Multiple

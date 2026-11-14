@@ -39,6 +39,12 @@ directories must be private and must not be symlinks; destination files are
 created exclusively with 0600 permissions. A file archive
 does not establish that its contents are safe or understood.
 
+Incoming attachment `type_hints` preserve bounded filename/MIME/media-kind and
+successful getFile path declarations, naming source and conflicts. A small
+allowlist chooses a prospective suffix; unknown formats remain `.bin`. These
+are not content detection. Existing raw updates, download consumers and older
+prepared records remain valid. See [incoming files](incoming-files.md).
+
 Outbound requested/completed records share operation_id. Successful results
 preserve Telegram response data. Errors log exception classes, never token URLs.
 Network ambiguity is recorded as uncertain and is not automatically retried.

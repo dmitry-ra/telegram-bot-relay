@@ -46,11 +46,14 @@ class FakeClient(Client):
     async def identity(self) -> int:
         return 123456
 
-    async def download(self, file_id: str, path: Path, limit: int, timeout: int) -> None:
+    async def download(
+        self, file_id: str, path: Path, limit: int, timeout: int
+    ) -> dict[str, JsonValue] | None:
         if self.failure:
             raise self.failure
         self.downloaded.append(file_id)
         path.write_bytes(b"example file")
+        return None
 
     async def close(self) -> None:
         pass

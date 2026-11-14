@@ -92,9 +92,22 @@ def test_sdk_against_mock_api(tmp_path: Path) -> None:
                 ):
                     media = Media.model_validate({"kind": kind, "file_id": "one"})
                     await client.execute(SendMedia(chat_id=101, media=[media]))
-                await client.download("one", tmp_path / "file", 10, 5)
+                metadata = await client.download("one", tmp_path / "file", 10, 5)
+                assert metadata == {"file_path": "files/one", "file_size": 5}
                 assert (tmp_path / "file").read_bytes() == b"hello"
                 assert (tmp_path / "file").stat().st_mode & 0o077 == 0
+                saved = await prepare(
+                    client,
+                    {"voice": {"file_id": "one", "mime_type": "audio/ogg"}},
+                    tmp_path / "attachments",
+                    Attachments(max_bytes=10),
+                    True,
+                )
+                assert str(saved[0]["path"]).endswith(".ogg")
+                assert saved[0]["bytes"] == 5
+                assert isinstance(saved[0]["type_hints"], dict)
+                assert saved[0]["type_hints"]["telegram_file_path"] == "files/one"
+                assert saved[0]["type_hints"]["telegram_file_size"] == 5
                 protected = tmp_path / "protected"
                 protected.write_bytes(b"retained")
                 link = tmp_path / "link"

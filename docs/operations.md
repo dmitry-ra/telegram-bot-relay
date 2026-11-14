@@ -52,6 +52,11 @@ event label. Previews normalize whitespace and are capped at 160 characters;
 Gateway may shorten the visible line further. Full original updates and download
 metadata are preserved separately. Voice previews do not require transcription.
 
+New incoming attachments include optional bounded `type_hints` with filename,
+declared MIME, media kind, successful getFile path and suffix-selection source.
+Conflicting declarations remain explicit; none proves actual byte format.
+See [incoming file naming and compatibility](incoming-files.md).
+
 Replies begin with a reply arrow and the parent's message ID when provided.
 A selected quote is preferred; otherwise a short parent text, caption or media
 label supplies context. This excerpt is capped at 20 characters so reply and
